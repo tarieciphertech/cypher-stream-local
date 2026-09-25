@@ -23,6 +23,7 @@ export const CatalogTitle = z.object({
   featured: z.boolean(),
   badge: z.string().nullable(),
   genres: z.array(CatalogGenre),
+  sourceUrl: z.string().nullable(),
 });
 
 export const CatalogEpisode = z.object({
@@ -32,6 +33,7 @@ export const CatalogEpisode = z.object({
   synopsis: z.string().nullable(),
   runtimeMinutes: z.number().int().nullable(),
   thumbnailUrl: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
 });
 
 export const CatalogSeason = z.object({
