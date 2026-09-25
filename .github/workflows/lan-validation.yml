@@ -9,20 +9,6 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: cypher_stream_local
-          POSTGRES_USER: cypher_stream
-          POSTGRES_PASSWORD: test-password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U cypher_stream -d cypher_stream_local"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +19,14 @@ jobs:
 
       - name: Enable pnpm
         run: corepack enable && corepack prepare pnpm@10.12.1 --activate
+
+      - name: Install PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-client nginx
+          sudo systemctl start postgresql
+          sudo -u postgres psql -c "CREATE USER cypher_stream PASSWORD 'test-password';"
+          sudo -u postgres createdb -O cypher_stream cypher_stream_local
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
@@ -55,7 +49,5 @@ jobs:
 
       - name: Validate Nginx syntax
         run: |
-          sudo apt-get update
-          sudo apt-get install -y nginx
           sudo cp deploy/nginx/lan.conf /etc/nginx/sites-available/cypher-stream-local
           sudo nginx -t
