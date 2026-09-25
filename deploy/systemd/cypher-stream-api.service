@@ -1,5 +1,5 @@
 [Unit]
-Description=Cypher-Stream Local API
+Description=Cypher-Stream Local
 After=network.target postgresql.service
 Wants=postgresql.service
 
@@ -11,6 +11,8 @@ WorkingDirectory=/opt/cypher-stream-local
 EnvironmentFile=/etc/cypher-stream-local.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
+Environment=WEB_DIST_DIR=/opt/cypher-stream-local/artifacts/cypher-stream/dist/public
+Environment=MEDIA_ROOT=/opt/cypher-stream-local/media
 ExecStart=/usr/bin/node /opt/cypher-stream-local/artifacts/api-server/dist/index.mjs
 Restart=on-failure
 RestartSec=5
