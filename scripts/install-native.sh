@@ -9,6 +9,14 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y postgresql ffmpeg curl ca-certificates build-essential openssl
+
+# Ubuntu may install PostgreSQL without leaving the cluster running.
+# Start it before creating the local role/database or applying the schema.
+systemctl enable --now postgresql
+until sudo -u postgres psql -c "SELECT 1" >/dev/null 2>&1; do
+  sleep 1
+done
+
 if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y nodejs
