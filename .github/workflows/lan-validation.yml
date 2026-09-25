@@ -19,7 +19,8 @@ jobs:
 
       - name: Validate LAN Nginx configuration
         run: |
-          docker run --rm -v "$PWD/deploy/nginx/lan.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.29-alpine nginx -t
+          sed 's#http://api:3000#http://127.0.0.1:3000#; s#http://web#http://127.0.0.1:8081#' deploy/nginx/lan.conf > /tmp/lan.conf
+          docker run --rm -v "/tmp/lan.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.29-alpine nginx -t
 
       - name: Validate local database schema
         run: |
