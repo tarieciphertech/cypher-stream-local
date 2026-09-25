@@ -15,8 +15,15 @@ const videoExtensions = new Set([".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"
 const esc = (value) => String(value ?? "").replace(/'/g, "''");
 const slugify = (value) =>
   String(value).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120) || "untitled";
-const idFor = (prefix, value) =>
-  createHash("sha256").update(`${prefix}:${value}`).digest("hex").slice(0, 24);
+const hashFor = (prefix, value) =>
+  createHash("sha256").update(`${prefix}:${value}`).digest("hex");
+const idFor = (prefix, value) => hashFor(prefix, value).slice(0, 24);
+const uuidFor = (prefix, value) => {
+  const hex = hashFor(prefix, value).slice(0, 32).split("");
+  hex[12] = "5";
+  hex[16] = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  return `${hex.slice(0, 8).join("")}-${hex.slice(8, 12).join("")}-${hex.slice(12, 16).join("")}-${hex.slice(16, 20).join("")}-${hex.slice(20, 32).join("")}`;
+};
 
 function walk(dir) {
   const result = [];
@@ -110,8 +117,8 @@ for (const item of files) {
   }[ext] ?? "application/octet-stream";
 
   const titleId = idFor("title", `${item.type}:${titleName.toLowerCase()}`);
-  const assetId = idFor("asset", relative);
-  const sourceId = idFor("source", relative);
+  const assetId = uuidFor("asset", relative);
+  const sourceId = uuidFor("source", relative);
   const slug = slugify(titleName);
   const runtimeMinutes = duration == null ? "null" : Math.max(1, Math.round(duration / 60));
 
@@ -133,7 +140,7 @@ values ('${esc(sourceId)}', '${esc(assetId)}', 'mp4', '/media/${esc(relative)}',
 on conflict (id) do update set source_url=excluded.source_url, is_default=true, width=excluded.width, height=excluded.height;
 `);
   } else {
-    const seasonId = idFor("season", `${titleId}:s${seasonNumber}`);
+    const seasonId = uuidFor("season", `${titleId}:s${seasonNumber}`);
     const episodeId = idFor("episode", `${titleId}:s${seasonNumber}:e${episodeNumber}`);
     statements.push(`
 insert into public.seasons (id, title_id, season_number, name)
