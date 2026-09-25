@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cypher-stream-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cypher_stream_local
+      POSTGRES_USER: cypher_stream
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - cypher_stream_postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cypher_stream -d cypher_stream_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [cypher-stream]
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/api/Dockerfile
+    container_name: cypher-stream-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://cypher_stream:${POSTGRES_PASSWORD:-change-me}@postgres:5432/cypher_stream_local
+    expose: ["3000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks: [cypher-stream]
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web/Dockerfile
+      args:
+        VITE_APP_ENV: production
+        VITE_API_URL: /api
+        VITE_MEDIA_BASE_URL: /media
+    container_name: cypher-stream-web
+    restart: unless-stopped
+    expose: ["80"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [cypher-stream]
+
+  nginx:
+    image: nginx:1.29-alpine
+    container_name: cypher-stream-nginx
+    restart: unless-stopped
+    ports:
+      - "${LAN_BIND_IP:-0.0.0.0}:${LAN_HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/lan.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./media:/srv/media:ro
+    depends_on: [web, api]
+    networks: [cypher-stream]
+
+volumes:
+  cypher_stream_postgres:
+
+networks:
+  cypher-stream:
+    driver: bridge
