@@ -25,7 +25,7 @@ install -m 600 /dev/null /etc/cypher-stream-local.env
 printf 'DATABASE_URL=postgresql://cypher_stream:%s@127.0.0.1:5432/cypher_stream_local\n' "$DB_PASSWORD" > /etc/cypher-stream-local.env
 sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='cypher_stream'" | grep -q 1 || sudo -u postgres psql -c "CREATE ROLE cypher_stream LOGIN PASSWORD '$DB_PASSWORD';"
 sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='cypher_stream_local'" | grep -q 1 || sudo -u postgres createdb -O cypher_stream cypher_stream_local
-sudo -u postgres psql -d cypher_stream_local -f "$ROOT_DIR/docker/postgres/init/001-local-schema.sql"
+sudo -u postgres psql -d cypher_stream_local -f "$ROOT_DIR/deploy/postgres/001-local-schema.sql"
 corepack pnpm install --no-frozen-lockfile
 corepack pnpm --filter @workspace/cypher-stream run build
 corepack pnpm --filter @workspace/api-server run build
