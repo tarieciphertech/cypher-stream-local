@@ -20,10 +20,10 @@ jobs:
       - name: Enable pnpm
         run: corepack enable && corepack prepare pnpm@10.12.1 --activate
 
-      - name: Install PostgreSQL
+      - name: Install PostgreSQL and FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql postgresql-client nginx
+          sudo apt-get install -y postgresql postgresql-client ffmpeg
           sudo systemctl start postgresql
           sudo -u postgres psql -c "CREATE USER cypher_stream PASSWORD 'test-password';"
           sudo -u postgres createdb -O cypher_stream cypher_stream_local
@@ -47,7 +47,8 @@ jobs:
           PGPASSWORD: test-password
         run: psql -h 127.0.0.1 -U cypher_stream -d cypher_stream_local -f deploy/postgres/001-local-schema.sql
 
-      - name: Validate Nginx syntax
+      - name: Verify native server entrypoint
         run: |
-          sudo cp deploy/nginx/lan.conf /etc/nginx/sites-available/cypher-stream-local
-          sudo nginx -t
+          grep -q 'express.static' artifacts/api-server/src/app.ts
+          grep -q 'MEDIA_ROOT' artifacts/api-server/src/app.ts
+          grep -q 'WEB_DIST_DIR' artifacts/api-server/src/app.ts
