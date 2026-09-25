@@ -499,3 +499,36 @@
   .watch-related { margin-top: 37px; }
   .watch-related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 19px 11px; }
 }
+/* Public shelf polish: Netflix-like browsing rhythm without changing the Cypher visual language. */
+.title-card { position: relative; transition: transform .32s cubic-bezier(.22,1,.36,1); }
+.title-card:hover, .title-card:focus-within { z-index: 5; transform: translateY(-4px); }
+.title-card:hover .sheen, .title-card:focus-within .sheen { box-shadow: 0 22px 45px rgba(0,0,0,.48); }
+@media (max-width: 1023px) {
+  .cypher-app main { overflow-x: clip; }
+  .title-card { flex: 0 0 148px; min-width: 148px !important; max-width: 148px !important; }
+  .title-card .card-actions { transform: none; opacity: 1; }
+  .title-card .card-actions button { height: 30px; width: 30px; }
+}
+@media (max-width: 640px) {
+  .cypher-app main { padding-left: 14px; padding-right: 14px; padding-bottom: 92px; }
+  .cypher-app header { height: 64px; }
+  .cypher-app header label[data-testid="label-search"] { width: 38px; overflow: hidden; transition: width .25s ease; }
+  .cypher-app header label[data-testid="label-search"]:focus-within { width: min(52vw, 230px); }
+  .cypher-app section[data-testid="section-featured-title"] h1 { font-size: clamp(3rem,18vw,5.1rem); max-width: 92vw; }
+  .cypher-app section[data-testid="section-featured-title"] > div:last-child { min-height: 560px; }
+  .cypher-app .scrollbar-none { scroll-snap-type: x proximity; padding-left: 2px; padding-right: 12px; }
+  .cypher-app .scrollbar-none > .title-card { scroll-snap-align: start; }
+  .watch-stage { width: calc(100% - 28px); padding-bottom: 72px; }
+  .watch-heading h1 { font-size: clamp(2.4rem,14vw,4.4rem); overflow-wrap: anywhere; }
+  .watch-player-frame { margin-left: -14px; margin-right: -14px; border-left: 0; border-right: 0; }
+  .watch-player-caption { align-items: flex-start; flex-direction: column; gap: 4px; padding: 8px 10px; }
+  .watch-player-caption span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .watch-action-row { gap: 8px; }
+  .watch-action-primary, .watch-action-secondary { min-height: 42px; padding: 10px 13px; }
+}
+@media (max-width: 380px) {
+  .title-card { flex-basis: 136px; min-width: 136px !important; max-width: 136px !important; }
+  .watch-stage { width: calc(100% - 20px); }
+  .watch-player-frame { margin-left: -10px; margin-right: -10px; }
+  .watch-action-row > button { flex: 1 1 auto; }
+}
