@@ -48,6 +48,18 @@ function ffprobe(file) {
   return JSON.parse(raw);
 }
 
+function normalizeSeriesName(value) {
+  return String(value)
+    .replace(/[._]+/g, " ")
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/\((?:19|20)\d{2}\)/g, " ")
+    .replace(/\b(?:season|series)\s*0*\d+\b.*$/i, "")
+    .replace(/\bs0*\d+\b.*$/i, "")
+    .replace(/\bcomplete\b.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim() || "Untitled Series";
+}
+
 function shellPsql(sql) {
   execFileSync("psql", ["--dbname", databaseUrl, "--set", "ON_ERROR_STOP=1"], {
     input: sql, encoding: "utf8", stdio: ["pipe", "inherit", "inherit"]
@@ -78,9 +90,9 @@ for (const item of files) {
   let episodeNumber = null;
 
   if (item.type === "series" && parts.length >= 2) {
-    titleName = parts[0];
+    titleName = normalizeSeriesName(parts[0]);
 
-    const seasonSources = [parts[1], titleName, stem];
+    const seasonSources = [parts[1], parts[0], titleName, stem];
     for (const source of seasonSources) {
       const seasonMatch =
         source.match(/(?:season|series)\s*0*(\d+)/i) ??
