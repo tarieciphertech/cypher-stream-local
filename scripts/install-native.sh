@@ -6,6 +6,19 @@ if [ "$(id -u)" -ne 0 ]; then
   echo "Run: sudo bash scripts/install-native.sh"
   exit 1
 fi
+
+# The installer is run with sudo, but the source tree normally belongs to the
+# invoking desktop user. Keep the repository user-owned so Corepack/pnpm can
+# read and write it without creating root-owned files.
+INSTALL_USER="${SUDO_USER:-}"
+if [ -n "$INSTALL_USER" ] && id "$INSTALL_USER" >/dev/null 2>&1; then
+  INSTALL_GROUP="$(id -gn "$INSTALL_USER")"
+  chown -R "$INSTALL_USER:$INSTALL_GROUP" "$ROOT_DIR"
+else
+  INSTALL_USER="root"
+  INSTALL_GROUP="root"
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y postgresql ffmpeg curl ca-certificates build-essential openssl
@@ -39,9 +52,12 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='cypher_strea
 # postgres cannot traverse /home/cipher, so stream the schema through stdin instead.
 cat "$ROOT_DIR/deploy/postgres/001-local-schema.sql" | sudo -u postgres psql -d cypher_stream_local
 
-corepack pnpm install --no-frozen-lockfile
-corepack pnpm --filter @workspace/cypher-stream run build
-corepack pnpm --filter @workspace/api-server run build
+# Run pnpm as the original desktop user. This prevents Corepack/pnpm from
+# creating root-owned node_modules, workspace files, or build artifacts.
+sudo -u "$INSTALL_USER" -H env HOME="/home/$INSTALL_USER" corepack pnpm install --no-frozen-lockfile
+sudo -u "$INSTALL_USER" -H env HOME="/home/$INSTALL_USER" corepack pnpm --filter @workspace/cypher-stream run build
+sudo -u "$INSTALL_USER" -H env HOME="/home/$INSTALL_USER" corepack pnpm --filter @workspace/api-server run build
+
 chown -R cypherstream:cypherstream "$ROOT_DIR/artifacts/api-server/dist" "$ROOT_DIR/artifacts/cypher-stream/dist"
 install -m 644 deploy/systemd/cypher-stream-api.service /etc/systemd/system/cypher-stream-api.service
 systemctl daemon-reload
