@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Cypher Stream"
+description = "A premium streaming platform for discovering cinematic films and series, with personalized browsing, title details, search, profiles, and a foundation for real playback and subscriptions."
+version = "1.0.0"
+id = "artifacts/cypher-stream"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24500
+
+[services.development]
+run = "pnpm --filter @workspace/cypher-stream run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cypher-stream", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cypher-stream/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24500"
+BASE_PATH = "/"

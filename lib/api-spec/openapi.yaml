@@ -1,0 +1,185 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.2.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: catalog
+    description: Published Cypher Stream catalog
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /catalog:
+    get:
+      operationId: getCatalog
+      tags: [catalog]
+      summary: List published titles
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [film, series]
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 24
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Published catalog page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogResponse"
+        "503":
+          description: Catalog unavailable
+  /titles/{id}:
+    get:
+      operationId: getTitle
+      tags: [catalog]
+      summary: Get a published title
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Published title detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogTitleDetail"
+        "404":
+          description: Title not found
+        "503":
+          description: Catalog unavailable
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    CatalogGenre:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+      required: [id, slug, name]
+    CatalogTitle:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        synopsis: { type: [string, 'null'] }
+        mediaType:
+          type: string
+          enum: [film, series]
+        releaseYear: { type: [integer, 'null'] }
+        maturityRating: { type: [string, 'null'] }
+        runtimeMinutes: { type: [integer, 'null'] }
+        status:
+          type: string
+          enum: [draft, published, archived]
+        posterUrl: { type: [string, 'null'], format: uri }
+        backdropUrl: { type: [string, 'null'], format: uri }
+        logoUrl: { type: [string, 'null'], format: uri }
+        accent: { type: [string, 'null'] }
+        featured: { type: boolean }
+        badge: { type: [string, 'null'] }
+        genres:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogGenre"
+      required: [id, slug, name, synopsis, mediaType, releaseYear, maturityRating, runtimeMinutes, status, posterUrl, backdropUrl, logoUrl, accent, featured, badge, genres]
+    CatalogEpisode:
+      type: object
+      properties:
+        id: { type: string }
+        episodeNumber: { type: integer }
+        name: { type: string }
+        synopsis: { type: [string, 'null'] }
+        runtimeMinutes: { type: [integer, 'null'] }
+        thumbnailUrl: { type: [string, 'null'], format: uri }
+      required: [id, episodeNumber, name, synopsis, runtimeMinutes, thumbnailUrl]
+    CatalogSeason:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        seasonNumber: { type: integer }
+        name: { type: [string, 'null'] }
+        synopsis: { type: [string, 'null'] }
+        episodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogEpisode"
+      required: [id, seasonNumber, name, synopsis, episodes]
+    CatalogTitleDetail:
+      allOf:
+        - $ref: "#/components/schemas/CatalogTitle"
+        - type: object
+          properties:
+            seasons:
+              type: array
+              items:
+                $ref: "#/components/schemas/CatalogSeason"
+          required: [seasons]
+    CatalogResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogTitle"
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+      required: [items, total, limit, offset]
