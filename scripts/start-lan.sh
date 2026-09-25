@@ -9,7 +9,6 @@ if [ ! -f /etc/cypher-stream-local.env ]; then
   exit 1
 fi
 sudo systemctl enable --now cypher-stream-api
-sudo systemctl reload nginx 2>/dev/null || sudo systemctl restart nginx
 echo "Cypher-Stream Local is running."
 hostname -I
-echo "Open: http://SERVER_LAN_IP/"
+echo "Open: http://SERVER_LAN_IP:3000/"
