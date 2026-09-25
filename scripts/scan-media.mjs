@@ -4,7 +4,9 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
-const root = path.resolve(process.env.MEDIA_ROOT ?? path.resolve(process.cwd(), "media"));
+const root = path.resolve(
+  process.env.MEDIA_ROOT ?? path.resolve(import.meta.dirname, "..", "media"),
+);
 const databaseUrl = process.env.DATABASE_URL;
 const dryRun = process.argv.includes("--dry-run");
 
@@ -75,13 +77,23 @@ for (const item of files) {
   let seasonNumber = null;
   let episodeNumber = null;
 
-  if (item.type === "series" && parts.length >= 3) {
+  if (item.type === "series" && parts.length >= 2) {
     titleName = parts[0];
-    const seasonMatch = parts[1].match(/(?:season|s)\s*0*(\d+)/i);
+
+    const seasonSources = [parts[1], titleName, stem];
+    for (const source of seasonSources) {
+      const seasonMatch =
+        source.match(/(?:season|series)\s*0*(\d+)/i) ??
+        source.match(/(?:^|[ ._-])s0*(\d+)(?:[ ._-]|$)/i);
+      if (seasonMatch) {
+        seasonNumber = Number(seasonMatch[1]);
+        break;
+      }
+    }
+
     const episodeMatch =
       stem.match(/(?:^|[ ._-])(?:s\d{1,2})?[ ._-]*e(\d{1,3})(?:[ ._-]|$)/i) ??
       stem.match(/(?:episode|ep)[ ._-]*0*(\d+)/i);
-    if (seasonMatch) seasonNumber = Number(seasonMatch[1]);
     if (episodeMatch) episodeNumber = Number(episodeMatch[1]);
   }
 
