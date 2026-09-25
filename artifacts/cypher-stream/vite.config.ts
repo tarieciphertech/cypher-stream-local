@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-export default defineConfig(({ command }) => {
+export default defineConfig(async ({ command }) => {
   const isBuild = command === 'build';
 
   const rawPort = process.env.PORT;
