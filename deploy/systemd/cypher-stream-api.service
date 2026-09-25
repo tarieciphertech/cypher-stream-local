@@ -5,15 +5,15 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-User=cypherstream
-Group=cypherstream
-WorkingDirectory=/opt/cypher-stream-local
+User=cipher
+Group=cipher
+WorkingDirectory=/home/cipher/Documents/Dev-projects/cypher-stream-local
 EnvironmentFile=/etc/cypher-stream-local.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
-Environment=WEB_DIST_DIR=/opt/cypher-stream-local/artifacts/cypher-stream/dist/public
-Environment=MEDIA_ROOT=/opt/cypher-stream-local/media
-ExecStart=/usr/bin/node /opt/cypher-stream-local/artifacts/api-server/dist/index.mjs
+Environment=WEB_DIST_DIR=/home/cipher/Documents/Dev-projects/cypher-stream-local/artifacts/cypher-stream/dist/public
+Environment=MEDIA_ROOT=/home/cipher/Documents/Dev-projects/cypher-stream-local/media
+ExecStart=/usr/bin/node /home/cipher/Documents/Dev-projects/cypher-stream-local/artifacts/api-server/dist/index.mjs
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=65536
