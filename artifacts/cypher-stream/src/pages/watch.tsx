@@ -80,7 +80,9 @@ export default function WatchPage() {
       ? rawSource
       : selectedEpisode
         ? `/api/playback/episodes/${encodeURIComponent(selectedEpisode.id)}`
-        : `/api/playback/titles/${encodeURIComponent(title.id)}`
+        : title
+          ? `/api/playback/titles/${encodeURIComponent(title.id)}`
+          : null
     : null;
   const currentProgressKey = title ? progressKey(title.id, selectedEpisode?.id) : '';
 
