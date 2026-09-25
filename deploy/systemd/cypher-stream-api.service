@@ -16,8 +16,6 @@ Environment=MEDIA_ROOT=/opt/cypher-stream-local/media
 ExecStart=/usr/bin/node /opt/cypher-stream-local/artifacts/api-server/dist/index.mjs
 Restart=on-failure
 RestartSec=5
-NoNewPrivileges=true
-ReadWritePaths=/opt/cypher-stream-local/media
 LimitNOFILE=65536
 
 [Install]
