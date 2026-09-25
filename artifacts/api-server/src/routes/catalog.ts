@@ -22,7 +22,52 @@ const resolveLocalMediaSource = (sourceUrl: string) => {
   return resolved;
 };
 
-const streamCompatiblePlayback = (
+const activeTranscodes = new Map<string, Promise<string>>();
+
+const transcodeToMp4 = (inputPath: string, cachePath: string, log: (message: string) => void) => {
+  const existing = activeTranscodes.get(cachePath);
+  if (existing) return existing;
+
+  const promise = new Promise<string>((resolve, reject) => {
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+    const tempPath = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
+    const ffmpeg = spawn("ffmpeg", [
+      "-hide_banner", "-loglevel", "error",
+      "-i", inputPath,
+      "-map", "0:v:0", "-map", "0:a:0?",
+      "-c:v", "libx264",
+      "-preset", process.env.FFMPEG_PRESET ?? "veryfast",
+      "-crf", process.env.FFMPEG_CRF ?? "22",
+      "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", "128k",
+      "-movflags", "+faststart",
+      "-f", "mp4", tempPath,
+    ]);
+
+    const stderr: string[] = [];
+    ffmpeg.stderr.on("data", (chunk) => stderr.push(chunk.toString()));
+    ffmpeg.on("error", reject);
+    ffmpeg.on("close", (code) => {
+      if (code === 0) {
+        fs.rename(tempPath, cachePath, (error) => {
+          if (error) reject(error);
+          else resolve(cachePath);
+        });
+      } else {
+        void fs.promises.rm(tempPath, { force: true });
+        reject(new Error(stderr.join("").trim() || `ffmpeg exited with code ${code}`));
+      }
+    });
+  }).finally(() => {
+    activeTranscodes.delete(cachePath);
+  });
+
+  activeTranscodes.set(cachePath, promise);
+  log(`Starting browser-compatible transcode: ${path.basename(inputPath)}`);
+  return promise;
+};
+
+const streamCompatiblePlayback = async (
   req: import("express").Request,
   res: import("express").Response,
   sourceUrl: string,
@@ -41,71 +86,23 @@ const streamCompatiblePlayback = (
 
   fs.mkdirSync(transcodeCacheRoot, { recursive: true });
   const cachePath = path.join(transcodeCacheRoot, `${cacheKey}.mp4`);
-  if (fs.existsSync(cachePath) && fs.statSync(cachePath).size > 0) {
-    res.sendFile(cachePath);
-    return;
+
+  try {
+    if (!fs.existsSync(cachePath) || fs.statSync(cachePath).size === 0) {
+      await transcodeToMp4(inputPath, cachePath, (message) => req.log.info({ message }, "playback transcode"));
+    }
+    if (!res.headersSent) res.sendFile(cachePath);
+  } catch (error) {
+    req.log.error({ err: error }, "browser-compatible transcode failed");
+    if (!res.headersSent) {
+      res.status(503).json({
+        error: "Unable to create browser-compatible playback",
+        detail: "Check that FFmpeg is installed and the source media is readable.",
+      });
+    }
   }
-
-  const tempPath = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
-  const ffmpeg = spawn("ffmpeg", [
-    "-hide_banner", "-loglevel", "error",
-    "-i", inputPath,
-    "-map", "0:v:0", "-map", "0:a:0?",
-    "-c:v", "libx264",
-    "-preset", process.env.FFMPEG_PRESET ?? "veryfast",
-    "-crf", process.env.FFMPEG_CRF ?? "22",
-    "-pix_fmt", "yuv420p",
-    "-c:a", "aac", "-b:a", "128k",
-    "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
-    "-f", "mp4", "pipe:1",
-  ]);
-  const cacheStream = fs.createWriteStream(tempPath);
-  let finished = false;
-
-  const abort = () => {
-    if (finished) return;
-    ffmpeg.kill("SIGTERM");
-    cacheStream.destroy();
-    void fs.promises.rm(tempPath, { force: true });
-  };
-
-  res.on("close", () => {
-    if (!res.writableEnded) abort();
-  });
-
-  res.status(200);
-  res.setHeader("Content-Type", "video/mp4");
-  res.setHeader("Cache-Control", "public, max-age=3600");
-  res.setHeader("Accept-Ranges", "none");
-  ffmpeg.stdout.pipe(res);
-  ffmpeg.stdout.pipe(cacheStream);
-
-  ffmpeg.stderr.on("data", (chunk) => {
-    req.log.debug({ message: chunk.toString().trim() }, "ffmpeg");
-  });
-
-  ffmpeg.on("error", (error) => {
-    req.log.error({ err: error }, "ffmpeg playback process failed");
-    abort();
-    if (!res.headersSent) res.status(503).json({ error: "FFmpeg is required for browser-compatible playback" });
-    else res.destroy(error);
-  });
-
-  ffmpeg.on("close", (code) => {
-    if (finished) return;
-    finished = true;
-    cacheStream.end(() => {
-      if (code === 0) {
-        fs.rename(tempPath, cachePath, (error) => {
-          if (error) req.log.error({ err: error }, "failed to finalize playback cache");
-        });
-      } else {
-        void fs.promises.rm(tempPath, { force: true });
-        if (!res.writableEnded) res.destroy(new Error(`ffmpeg exited with code ${code}`));
-      }
-    });
-  });
 };
+
 
 const parsePositiveInt = (value: unknown, fallback: number, max: number) => {
   const parsed = Number(value);
