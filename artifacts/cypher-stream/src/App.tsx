@@ -24,7 +24,7 @@ import {
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { featuredTitle, genreMoods, titles, type Title } from './data';
+import { genreMoods, type Title } from './data';
 import AdminStudio from '@/pages/admin-studio';
 import WatchPage from '@/pages/watch';
 import NotFound from '@/pages/not-found';
@@ -43,6 +43,51 @@ const navItems: { key: NavKey; label: string; icon: typeof Home }[] = [
 const posterFallback = (title: string, accent: string) =>
   `linear-gradient(145deg, ${accent} 0%, #171822 65%, #0b0c14 100%)`;
 const savedListKey = 'cypher-saved-titles';
+
+type CatalogGenre = { id: string; slug: string; name: string };
+type CatalogTitle = {
+  id: string;
+  slug: string;
+  name: string;
+  synopsis: string | null;
+  mediaType: 'film' | 'series';
+  releaseYear: number | null;
+  maturityRating: string | null;
+  runtimeMinutes: number | null;
+  status: 'draft' | 'published' | 'archived';
+  posterUrl: string | null;
+  backdropUrl: string | null;
+  logoUrl: string | null;
+  accent: string | null;
+  featured: boolean;
+  badge: string | null;
+  genres: CatalogGenre[];
+  sourceUrl: string | null;
+};
+
+const formatDuration = (minutes: number | null, type: Title['type']) => {
+  if (!minutes) return type === 'series' ? 'Series' : 'Runtime unavailable';
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return hours ? `${hours}h ${remaining}m` : `${remaining}m`;
+};
+
+const catalogToTitle = (item: CatalogTitle): Title => ({
+  id: item.id,
+  name: item.name,
+  eyebrow: item.mediaType === 'series' ? 'Cypher Series' : 'Cypher Film',
+  year: item.releaseYear ?? new Date().getFullYear(),
+  rating: item.maturityRating ?? 'NR',
+  duration: formatDuration(item.runtimeMinutes, item.mediaType),
+  type: item.mediaType,
+  genres: item.genres.map((genre) => genre.name),
+  description: item.synopsis || 'A transmission from the local Cypher catalogue.',
+  poster: item.posterUrl || '',
+  backdrop: item.backdropUrl || '',
+  accent: item.accent || '#e8bc71',
+  playbackSource: item.sourceUrl || undefined,
+  badge: item.badge || undefined,
+});
 
 function BrandMark() {
   return (
@@ -104,15 +149,17 @@ function ImageCover({ title, className = '' }: { title: Title; className?: strin
       className={`absolute inset-0 bg-cover bg-center ${className}`}
       style={{ backgroundImage: posterFallback(title.name, title.accent) }}
     >
-      <img
-        src={title.poster}
-        alt=""
-        loading="lazy"
-        className="h-full w-full object-cover"
-        onError={(event) => {
-          event.currentTarget.style.display = 'none';
-        }}
-      />
+      {title.poster && (
+        <img
+          src={title.poster}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none';
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -296,7 +343,7 @@ function DetailPanel({ title, isSaved, onClose, onPlay, onToggleSaved }: { title
       <button type="button" aria-label="Close details" onClick={onClose} data-testid="button-close-details" className="absolute inset-0 cursor-default" />
       <div className="relative max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-2xl border border-white/10 bg-[#171822] shadow-2xl sm:rounded-2xl">
         <div className="relative h-52 overflow-hidden sm:h-72">
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${title.backdrop}), ${posterFallback(title.name, title.accent)}` }} />
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: title.backdrop ? `url(${title.backdrop}), ${posterFallback(title.name, title.accent)}` : posterFallback(title.name, title.accent) }} />
           <div className="absolute inset-0 bg-gradient-to-t from-[#171822] via-[#171822]/20 to-transparent" />
           <button type="button" aria-label="Close title details" onClick={onClose} data-testid="button-close-details-top" className="focus-ring absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-[#0b0c14]/50 text-[#eeebda] hover:border-[#e8bc71]"><X size={16} /></button>
           <div className="absolute bottom-5 left-6 right-6 sm:left-9">
@@ -330,6 +377,9 @@ function DetailPanel({ title, isSaved, onClose, onPlay, onToggleSaved }: { title
 function BrowseSurface() {
   const [activeSection, setActiveSection] = useState<NavKey>('home');
   const [query, setQuery] = useState('');
+  const [catalogTitles, setCatalogTitles] = useState<Title[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>(() => {
     try {
       const stored = JSON.parse(window.localStorage.getItem(savedListKey) || '[]');
@@ -344,18 +394,39 @@ function BrowseSurface() {
   const saved = useMemo(() => new Set(savedIds), [savedIds]);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch('/api/catalog?limit=100&offset=0')
+      .then((response) => {
+        if (!response.ok) throw new Error(`Catalog request failed: ${response.status}`);
+        return response.json() as Promise<{ items: CatalogTitle[] }>;
+      })
+      .then((payload) => {
+        if (!cancelled) setCatalogTitles(payload.items.filter((item) => item.status === 'published').map(catalogToTitle));
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setCatalogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     window.localStorage.setItem(savedListKey, JSON.stringify(savedIds));
   }, [savedIds]);
 
   const filteredTitles = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return titles.filter((title) => {
+    return catalogTitles.filter((title) => {
       const matchesSection = activeSection === 'home' || (activeSection === 'series' && title.type === 'series') || (activeSection === 'films' && title.type === 'film') || (activeSection === 'my-list' && saved.has(title.id));
       if (!normalizedQuery) return matchesSection;
       const haystack = [title.name, title.eyebrow, title.description, ...title.genres].join(' ').toLowerCase();
       return matchesSection && haystack.includes(normalizedQuery);
     });
-  }, [activeSection, query, saved]);
+  }, [activeSection, query, saved, catalogTitles]);
 
   const toggleSaved = (id: string) => setSavedIds((current) => current.includes(id) ? current.filter((savedId) => savedId !== id) : [...current, id]);
   const openWatch = (title: Title) => setLocation(`/watch/${title.id}`);
@@ -366,9 +437,30 @@ function BrowseSurface() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const searchActive = query.trim().length > 0;
-  const showHomeHero = activeSection === 'home' && !searchActive;
-  const continueTitles = titles.filter((title) => title.progress);
-  const newTitles = titles.filter((title) => !title.progress);
+  const featuredTitle = catalogTitles.find((title) => title.type === 'film') || catalogTitles[0] || null;
+  const showHomeHero = activeSection === 'home' && !searchActive && !!featuredTitle;
+  const continueTitles = catalogTitles.filter((title) => title.progress);
+  const newTitles = catalogTitles.filter((title) => !title.progress);
+
+  if (catalogLoading) {
+    return (
+      <div className="cypher-app grain flex min-h-[100dvh] items-center justify-center">
+        <p className="mono text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Tuning the local index…</p>
+      </div>
+    );
+  }
+
+  if (catalogError) {
+    return (
+      <div className="cypher-app grain flex min-h-[100dvh] items-center justify-center px-5 text-center">
+        <div>
+          <p className="mono mb-3 text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Signal interrupted</p>
+          <h1 className="display text-3xl font-bold text-[#eeebda]">The local catalogue is unavailable.</h1>
+          <p className="mt-3 text-sm text-[#9695a2]">Check the Cypher-Stream server and refresh this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cypher-app grain flex min-h-[100dvh]">
@@ -421,15 +513,15 @@ function BrowseSurface() {
         <main className="mx-auto max-w-[1440px] px-5 pb-24 sm:px-8 lg:px-12">
           {showHomeHero && (
             <section className="reveal relative -mx-5 overflow-hidden sm:-mx-8 lg:-mx-12" data-testid="section-featured-title">
-              <div className="absolute inset-0 bg-cover bg-[center_26%] sm:bg-[center_22%]" style={{ backgroundImage: `url(${featuredTitle.backdrop})` }} />
-              <div className="hero-breathe absolute inset-[-3%] bg-cover bg-[center_26%] opacity-40 mix-blend-screen sm:bg-[center_22%]" style={{ backgroundImage: `url(${featuredTitle.backdrop})` }} />
+              <div className="absolute inset-0 bg-cover bg-[center_26%] sm:bg-[center_22%]" style={{ backgroundImage: featuredTitle.backdrop ? `url(${featuredTitle.backdrop})` : posterFallback(featuredTitle.name, featuredTitle.accent) }} />
+              <div className="hero-breathe absolute inset-[-3%] bg-cover bg-[center_26%] opacity-40 mix-blend-screen sm:bg-[center_22%]" style={{ backgroundImage: featuredTitle.backdrop ? `url(${featuredTitle.backdrop})` : posterFallback(featuredTitle.name, featuredTitle.accent) }} />
               <div className="absolute inset-0 bg-gradient-to-r from-[#0b0c14] via-[#0b0c14]/75 to-[#0b0c14]/10" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c14] via-transparent to-[#0b0c14]/10" />
               <div className="relative flex min-h-[580px] items-end px-5 pb-14 pt-28 sm:min-h-[610px] sm:px-8 sm:pb-16 lg:min-h-[670px] lg:px-12 lg:pb-20">
                 <div className="max-w-xl">
                   <div className="reveal-delay-1 reveal mb-6 flex items-center gap-3">
                     <span className="mono rounded-sm bg-[#c4e56b] px-2 py-1 text-[9px] font-medium uppercase tracking-[.15em] text-[#15161d]">Featured transmission</span>
-                    <span className="mono text-[9px] uppercase tracking-[.18em] text-[#c4e56b]">01 / 04</span>
+                    <span className="mono text-[9px] uppercase tracking-[.18em] text-[#c4e56b]">01 / {String(catalogTitles.length).padStart(2, '0')}</span>
                   </div>
                   <p className="reveal reveal-delay-1 mono mb-3 text-[10px] uppercase tracking-[.3em] text-[#e8bc71]">{featuredTitle.eyebrow}</p>
                   <h1 className="reveal reveal-delay-2 display max-w-lg text-[clamp(3.5rem,9vw,7.8rem)] font-bold leading-[.83] tracking-[-.08em] text-[#eeebda]">{featuredTitle.name}</h1>
@@ -462,10 +554,10 @@ function BrowseSurface() {
           ) : (
             <>
               {!showHomeHero && <div className="reveal flex items-end justify-between pt-11"><div><p className="mono mb-2 text-[9px] uppercase tracking-[.25em] text-[#e8bc71]">The index</p><h1 className="display text-4xl font-bold tracking-[-.06em] text-[#eeebda]">{activeSection === 'series' ? 'Series, in full signal.' : 'Films worth staying up for.'}</h1></div><span className="mono hidden text-[10px] text-[#72717d] sm:block">{filteredTitles.length} transmissions</span></div>}
-               {showHomeHero && <TitleRow label="Pick up where you left off" kicker="Continue watching" items={continueTitles} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />}
-               <TitleRow label={activeSection === 'home' ? 'Tonight’s signal' : activeSection === 'series' ? 'Series with a point of view' : 'The long way around'} kicker={activeSection === 'home' ? 'Curated this week' : undefined} items={filteredTitles.filter((title) => !continueTitles.includes(title)).slice(0, 6)} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
+              {showHomeHero && <TitleRow label="Pick up where you left off" kicker="Continue watching" items={continueTitles} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />}
+              <TitleRow label={activeSection === 'home' ? 'Tonight’s signal' : activeSection === 'series' ? 'Series with a point of view' : 'The long way around'} kicker={activeSection === 'home' ? 'Curated this week' : undefined} items={filteredTitles.filter((title) => !continueTitles.includes(title)).slice(0, 6)} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
               {showHomeHero && <GenreGrid onGenre={(genre) => setQuery(genre)} />}
-               <TitleRow label="Further transmissions" kicker="A little off-center" items={newTitles.filter((title) => filteredTitles.includes(title))} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
+              <TitleRow label="Further transmissions" kicker="A little off-center" items={newTitles.filter((title) => filteredTitles.includes(title))} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
               {showHomeHero && <div className="reveal mt-16 border-y border-white/[.08] py-8 sm:flex sm:items-center sm:justify-between" data-testid="section-membership-note"><div><p className="mono mb-2 text-[9px] uppercase tracking-[.25em] text-[#e8bc71]">The Cypher promise</p><p className="display text-xl font-bold tracking-[-.03em] text-[#eeebda]">Less noise. More afterglow.</p></div><p className="mt-3 max-w-sm text-xs leading-5 text-[#85848f] sm:mt-0">A human-shaped catalogue of films and series for the beautifully curious. We add a small batch every Thursday.</p><button type="button" onClick={() => alert('You are already on the list.')} data-testid="button-join-cypher" className="focus-ring mt-5 flex shrink-0 items-center gap-2 text-[11px] font-bold text-[#c4e56b] sm:mt-0">Stay in the loop <ArrowUpRight size={14} /></button></div>}
             </>
           )}
