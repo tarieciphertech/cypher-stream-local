@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT_DIR"
 ./scripts/setup-lan.sh
-docker compose --env-file .env.lan -f docker-compose.lan.yml up -d --build
-echo
-echo "Cypher-Stream Local is starting."
-echo "Server LAN addresses:"
+if [ ! -f /etc/cypher-stream-local.env ]; then
+  echo "Native services are not installed yet."
+  echo "Run: sudo bash scripts/install-native.sh"
+  exit 1
+fi
+sudo systemctl enable --now cypher-stream-api
+sudo systemctl reload nginx 2>/dev/null || sudo systemctl restart nginx
+echo "Cypher-Stream Local is running."
 hostname -I
-echo "Open http://SERVER_LAN_IP:8080/"
+echo "Open: http://SERVER_LAN_IP/"
