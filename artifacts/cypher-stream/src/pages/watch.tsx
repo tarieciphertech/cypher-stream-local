@@ -74,7 +74,14 @@ export default function WatchPage() {
   );
 
   const selectedEpisode = episodes.find((episode) => episode.id === selectedEpisodeId) || episodes[0];
-  const source = selectedEpisode?.sourceUrl || title?.sourceUrl || null;
+  const rawSource = selectedEpisode?.sourceUrl || title?.sourceUrl || null;
+  const source = rawSource
+    ? /\.(mp4|webm|m4v|mov)(?:[?#].*)?$/i.test(rawSource)
+      ? rawSource
+      : selectedEpisode
+        ? `/api/playback/episodes/${encodeURIComponent(selectedEpisode.id)}`
+        : `/api/playback/titles/${encodeURIComponent(title.id)}`
+    : null;
   const currentProgressKey = title ? progressKey(title.id, selectedEpisode?.id) : '';
 
   useEffect(() => {
@@ -215,7 +222,7 @@ export default function WatchPage() {
 
           {playbackError && (
             <p className="watch-error-note" role="status" data-testid="status-playback-error">
-              The local media file could not be played by this browser. MP4/WebM files should play directly; MKV/other formats may require browser-compatible transcoding later.
+              This LAN media format is being converted to a browser-compatible stream by FFmpeg. The original media file remains untouched, and the converted copy is cached for later playback.
             </p>
           )}
 
