@@ -1,0 +1,4 @@
+.env.lan
+media/
+backups/
+*.log
