@@ -1,0 +1,61 @@
+name: Native LAN Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: cypher_stream_local
+          POSTGRES_USER: cypher_stream
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cypher_stream -d cypher_stream_local"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@10.12.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm --filter @workspace/cypher-stream run build
+        env:
+          PORT: 8080
+          BASE_PATH: /
+          VITE_API_URL: /api
+          VITE_MEDIA_BASE_URL: /media
+
+      - name: Build API
+        run: pnpm --filter @workspace/api-server run build
+
+      - name: Validate local schema
+        env:
+          PGPASSWORD: test-password
+        run: psql -h 127.0.0.1 -U cypher_stream -d cypher_stream_local -f deploy/postgres/001-local-schema.sql
+
+      - name: Validate Nginx syntax
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nginx
+          sudo cp deploy/nginx/lan.conf /etc/nginx/sites-available/cypher-stream-local
+          sudo nginx -t
