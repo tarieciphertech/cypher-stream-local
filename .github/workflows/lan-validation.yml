@@ -1,0 +1,32 @@
+name: LAN Stack Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        run: |
+          cp .env.lan.example .env.lan
+          docker compose --env-file .env.lan -f docker-compose.lan.yml config
+
+      - name: Validate LAN Nginx configuration
+        run: |
+          docker run --rm -v "$PWD/deploy/nginx/lan.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.29-alpine nginx -t
+
+      - name: Validate local database schema
+        run: |
+          docker run --rm -v "$PWD/docker/postgres/init:/init:ro" postgres:16-alpine             bash -lc "cat /init/001-local-schema.sql >/dev/null && grep -q 'local_users' /init/001-local-schema.sql"
+
+      - name: Build web image
+        run: docker compose --env-file .env.lan -f docker-compose.lan.yml build web
+
+      - name: Build API image
+        run: docker compose --env-file .env.lan -f docker-compose.lan.yml build api
