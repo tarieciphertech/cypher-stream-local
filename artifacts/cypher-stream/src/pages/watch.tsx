@@ -222,7 +222,7 @@ export default function WatchPage() {
 
           {playbackError && (
             <p className="watch-error-note" role="status" data-testid="status-playback-error">
-              This LAN media format is being converted to a browser-compatible stream by FFmpeg. The original media file remains untouched, and the converted copy is cached for later playback.
+              Converting this LAN media for browser playback. Playback starts as soon as the first playable video data is ready; the completed MP4 is cached for faster future plays.
             </p>
           )}
 
