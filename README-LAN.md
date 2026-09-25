@@ -1,28 +1,45 @@
 # Cypher-Stream Local — LAN Edition
 
-Private local-network deployment for the Cypher-Stream application.
+Cypher-Stream Local runs directly on a Linux LAN server **without Docker**.
 
 ## Stack
 
-- React/Vite web application
-- Node API
+- React/Vite frontend
+- Node.js 22 API
 - PostgreSQL 16
-- Nginx reverse proxy
-- Local media volume
-- Local PostgreSQL user schema
-- No public DNS required
-- No router port forwarding required
+- Nginx
+- FFmpeg / FFprobe
+- systemd
+- Local filesystem media
+- No Supabase, Render, or Docker
+- No public DNS or router port forwarding required
 
-## Start
+## Install
+
+From the repository directory:
 
 ```bash
-cp .env.lan.example .env.lan
-nano .env.lan
-chmod +x scripts/*.sh
-./scripts/start-lan.sh
+sudo bash scripts/install-native.sh
 ```
 
-The default LAN port is 8080. Find the server address with:
+The installer installs native dependencies, creates PostgreSQL database `cypher_stream_local`, applies the local schema, builds the frontend/API, and registers the API with systemd.
+
+## Start / stop
+
+```bash
+bash scripts/start-lan.sh
+bash scripts/stop-lan.sh
+```
+
+Check services:
+
+```bash
+systemctl status cypher-stream-api
+systemctl status nginx
+journalctl -u cypher-stream-api -f
+```
+
+## LAN access
 
 ```bash
 hostname -I
@@ -31,10 +48,12 @@ hostname -I
 Open:
 
 ```
-http://SERVER_LAN_IP:8080/
+http://SERVER_LAN_IP/
 ```
 
-## Media folders
+Only Nginx is exposed to the LAN. The API listens on `127.0.0.1:3000`; PostgreSQL is local-only.
+
+## Media
 
 ```
 media/movies/
@@ -43,21 +62,29 @@ media/subtitles/
 media/artwork/
 ```
 
-Example:
+Examples:
 
 ```
 media/movies/Movie Name/movie.mp4
 media/series/Series Name/Season 01/S01E01.mp4
 ```
 
-Nginx serves local media from /media/ with byte-range support.
+Nginx serves `/media/` with byte-range support. FFmpeg/FFprobe are installed for the media scanner and metadata extraction layer.
 
-## Network model
+## Architecture
 
-Only Nginx is published to the LAN. PostgreSQL and the Node API stay inside the Docker network.
+```
+LAN clients
+   |
+   v
+Nginx :80
+   +--> /        React static files
+   +--> /api     Node API -> PostgreSQL
+   +--> /media   local media files
+```
 
-Do not expose PostgreSQL or the API directly. Do not configure router port forwarding.
+Docker is deliberately not part of this deployment.
 
-## Current migration boundary
+## Next application layer
 
-The local schema replaces the source project's Supabase auth.users foreign-key dependency with public.local_users. Application-level local login, media scanning, metadata extraction, playback-progress APIs, and admin library management are the next application layer to implement on top of this LAN foundation.
+The next implementation is the native media scanner: discover movies/series, run FFprobe, create catalog records, and expose playable media to the frontend.
