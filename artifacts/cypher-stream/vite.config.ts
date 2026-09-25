@@ -5,77 +5,85 @@ import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-const rawPort = process.env.PORT;
+export default defineConfig(({ command }) => {
+  const isBuild = command === 'build';
 
-if (!rawPort) {
-  throw new Error(
-    'PORT environment variable is required but was not provided.',
-  );
-}
+  const rawPort = process.env.PORT;
+  const port = isBuild
+    ? undefined
+    : (() => {
+        if (!rawPort) {
+          throw new Error(
+            'PORT environment variable is required but was not provided.',
+          );
+        }
 
-const port = Number(rawPort);
+        const value = Number(rawPort);
 
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+        if (!Number.isInteger(value) || value <= 0 || value > 65535) {
+          throw new Error(`Invalid PORT value: "${rawPort}"`);
+        }
 
-const basePath = process.env.BASE_PATH;
+        return value;
+      })();
 
-if (!basePath) {
-  throw new Error(
-    'BASE_PATH environment variable is required but was not provided.',
-  );
-}
+  const basePath = process.env.BASE_PATH ?? (isBuild ? '/' : undefined);
 
-export default defineConfig({
-  base: basePath,
-  plugins: [
-    react(),
-    tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== 'production' &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import('@replit/vite-plugin-cartographer').then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, '..'),
-            }),
-          ),
-          await import('@replit/vite-plugin-dev-banner').then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(import.meta.dirname, 'src'),
-      '@assets': path.resolve(
-        import.meta.dirname,
-        '..',
-        '..',
-        'attached_assets',
-      ),
+  if (!basePath) {
+    throw new Error(
+      'BASE_PATH environment variable is required but was not provided.',
+    );
+  }
+
+  return {
+    base: basePath,
+    plugins: [
+      react(),
+      tailwindcss(),
+      runtimeErrorOverlay(),
+      ...(process.env.NODE_ENV !== 'production' &&
+      process.env.REPL_ID !== undefined
+        ? [
+            await import('@replit/vite-plugin-cartographer').then((m) =>
+              m.cartographer({
+                root: path.resolve(import.meta.dirname, '..'),
+              }),
+            ),
+            await import('@replit/vite-plugin-dev-banner').then((m) =>
+              m.devBanner(),
+            ),
+          ]
+        : []),
+    ],
+    resolve: {
+      alias: {
+        '@': path.resolve(import.meta.dirname, 'src'),
+        '@assets': path.resolve(
+          import.meta.dirname,
+          '..',
+          '..',
+          'attached_assets',
+        ),
+      },
+      dedupe: ['react', 'react-dom'],
     },
-    dedupe: ['react', 'react-dom'],
-  },
-  root: path.resolve(import.meta.dirname),
-  build: {
-    outDir: path.resolve(import.meta.dirname, 'dist/public'),
-    emptyOutDir: true,
-  },
-  server: {
-    port,
-    strictPort: true,
-    host: '0.0.0.0',
-    allowedHosts: true,
-    fs: {
-      strict: true,
+    root: path.resolve(import.meta.dirname),
+    build: {
+      outDir: path.resolve(import.meta.dirname, 'dist/public'),
+      emptyOutDir: true,
     },
-  },
-  preview: {
-    port,
-    host: '0.0.0.0',
-    allowedHosts: true,
-  },
+    server: {
+      ...(port === undefined ? {} : { port, strictPort: true }),
+      host: '0.0.0.0',
+      allowedHosts: true,
+      fs: {
+        strict: true,
+      },
+    },
+    preview: {
+      ...(port === undefined ? {} : { port }),
+      host: '0.0.0.0',
+      allowedHosts: true,
+    },
+  };
 });
