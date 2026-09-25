@@ -85,7 +85,7 @@ const streamCompatiblePlayback = async (
   }
 
   fs.mkdirSync(transcodeCacheRoot, { recursive: true });
-  const cachePath = path.join(transcodeCacheRoot, `${cacheKey}.mp4`);
+  const cachePath = path.join(transcodeCacheRoot, `v2-${cacheKey}.mp4`);
 
   try {
     if (!fs.existsSync(cachePath) || fs.statSync(cachePath).size === 0) {
