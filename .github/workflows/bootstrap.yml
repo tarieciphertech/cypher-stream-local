@@ -1,0 +1,35 @@
+name: Bootstrap from Cypher-Stream
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: github.event.head_commit.message != 'Bootstrap Cypher-Stream Local'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          repository: tarieciphertech/Cypher-Stream
+          ref: main
+          path: source
+
+      - name: Replace target with source
+        run: |
+          rsync -a --delete --exclude='.git' source/ ./
+          rm -rf source
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Bootstrap Cypher-Stream Local" || exit 0
+          git push origin HEAD:main
