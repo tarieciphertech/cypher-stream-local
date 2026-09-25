@@ -11,9 +11,11 @@ ARG VITE_MEDIA_BASE_URL=/media
 ENV VITE_APP_ENV=$VITE_APP_ENV
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_MEDIA_BASE_URL=$VITE_MEDIA_BASE_URL
+ENV PORT=8080
+ENV BASE_PATH=/
 RUN pnpm install --no-frozen-lockfile --filter @workspace/cypher-stream...
 RUN pnpm --filter @workspace/cypher-stream run build
 
 FROM nginx:1.29-alpine
-COPY --from=build /workspace/artifacts/cypher-stream/dist /usr/share/nginx/html
+COPY --from=build /workspace/artifacts/cypher-stream/dist/public /usr/share/nginx/html
 EXPOSE 80
