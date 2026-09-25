@@ -69,7 +69,6 @@ const streamCompatiblePlayback = (
     void fs.promises.rm(tempPath, { force: true });
   };
 
-  req.on("close", abort);
   res.on("close", () => {
     if (!res.writableEnded) abort();
   });
