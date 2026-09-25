@@ -17,9 +17,6 @@ ExecStart=/usr/bin/node /opt/cypher-stream-local/artifacts/api-server/dist/index
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=full
-ProtectHome=true
 ReadWritePaths=/opt/cypher-stream-local/media
 LimitNOFILE=65536
 
