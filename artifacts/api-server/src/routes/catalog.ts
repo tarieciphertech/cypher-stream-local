@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { and, asc, countDistinct, desc, eq, ilike, or } from "drizzle-orm";
 import { CatalogResponse, CatalogTitleDetail } from "@workspace/api-zod";
-import { getDb, episodes, genres, seasons, titleGenres, titles } from "@workspace/db";
+import { getDb, episodes, genres, mediaAssets, seasons, titleGenres, titles, videoSources } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -70,6 +70,7 @@ router.get("/catalog", async (req, res) => {
         featured: row.title.featured,
         badge: row.title.badge,
         genres: [],
+        sourceUrl: null,
       };
       if (row.genre && !mapped.genres.some((item) => item.id === row.genre!.id)) {
         mapped.genres.push({ id: row.genre.id, slug: row.genre.slug, name: row.genre.name });
@@ -119,6 +120,28 @@ router.get("/titles/:id", async (req, res) => {
       .where(eq(seasons.titleId, req.params.id))
       .orderBy(asc(seasons.seasonNumber), asc(episodes.episodeNumber));
 
+    const titleSourceRows = await db
+      .select({ source: videoSources, asset: mediaAssets })
+      .from(mediaAssets)
+      .innerJoin(videoSources, eq(videoSources.mediaAssetId, mediaAssets.id))
+      .where(eq(mediaAssets.titleId, req.params.id))
+      .orderBy(desc(videoSources.isDefault));
+
+    const episodeSourceRows = await db
+      .select({ source: videoSources, asset: mediaAssets, episode: episodes, season: seasons })
+      .from(mediaAssets)
+      .innerJoin(videoSources, eq(videoSources.mediaAssetId, mediaAssets.id))
+      .innerJoin(episodes, eq(episodes.id, mediaAssets.episodeId))
+      .innerJoin(seasons, eq(seasons.id, episodes.seasonId))
+      .where(eq(seasons.titleId, req.params.id))
+      .orderBy(desc(videoSources.isDefault));
+
+    const titleSourceUrl = titleSourceRows[0]?.source.sourceUrl ?? null;
+    const episodeSourceUrls = new Map<string, string>();
+    for (const row of episodeSourceRows) {
+      if (!episodeSourceUrls.has(row.episode.id)) episodeSourceUrls.set(row.episode.id, row.source.sourceUrl);
+    }
+
     const seasonMap = new Map<string, CatalogTitleDetail["seasons"][number]>();
     for (const row of seasonRows) {
       const season = seasonMap.get(row.season.id) ?? {
@@ -136,6 +159,7 @@ router.get("/titles/:id", async (req, res) => {
           synopsis: row.episode.synopsis,
           runtimeMinutes: row.episode.runtimeMinutes,
           thumbnailUrl: row.episode.thumbnailUrl,
+          sourceUrl: episodeSourceUrls.get(row.episode.id) ?? null,
         });
       }
       seasonMap.set(row.season.id, season);
@@ -158,6 +182,7 @@ router.get("/titles/:id", async (req, res) => {
       featured: first.title.featured,
       badge: first.title.badge,
       genres: genreList,
+      sourceUrl: titleSourceUrl,
       seasons: [...seasonMap.values()],
     });
 
