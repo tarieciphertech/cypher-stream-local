@@ -70,61 +70,6 @@ const getStreamInfo = (inputPath: string) =>
     });
   });
 
-const createMp4Cache = async (
-  inputPath: string,
-  cachePath: string,
-  log: (message: string) => void,
-) => {
-  fs.mkdirSync(path.dirname(cachePath), { recursive: true });
-  const tempPath = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
-  const info = await getStreamInfo(inputPath);
-  const canRemux = info.videoCodec === "h264" && (!info.audioCodec || ["aac", "mp3"].includes(info.audioCodec));
-
-  const args = canRemux
-    ? [
-        "-hide_banner", "-loglevel", "error", "-nostdin",
-        "-i", inputPath,
-        "-map", "0:v:0", "-map", "0:a:0?",
-        "-c", "copy",
-        "-movflags", "+faststart",
-        "-f", "mp4", tempPath,
-      ]
-    : [
-        "-hide_banner", "-loglevel", "error", "-nostdin",
-        "-i", inputPath,
-        "-map", "0:v:0", "-map", "0:a:0?",
-        "-c:v", "libx264",
-        "-preset", process.env.FFMPEG_PRESET ?? "veryfast",
-        "-crf", process.env.FFMPEG_CRF ?? "22",
-        "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "128k",
-        "-movflags", "+faststart",
-        "-f", "mp4", tempPath,
-      ];
-
-  log(canRemux
-    ? `Fast remux to MP4: ${path.basename(inputPath)}`
-    : `Full browser transcode required: ${path.basename(inputPath)}`);
-
-  await new Promise<void>((resolve, reject) => {
-    const ffmpeg = spawn("ffmpeg", args);
-    const stderr: string[] = [];
-    ffmpeg.stderr.on("data", (chunk) => stderr.push(chunk.toString()));
-    ffmpeg.on("error", reject);
-    ffmpeg.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(stderr.join("").trim() || `ffmpeg exited with code ${code}`));
-    });
-  });
-
-  try {
-    await fs.promises.rename(tempPath, cachePath);
-  } catch (error) {
-    await fs.promises.rm(tempPath, { force: true });
-    throw error;
-  }
-};
-
 const streamCompatiblePlayback = async (
   req: import("express").Request,
   res: import("express").Response,
@@ -143,26 +88,119 @@ const streamCompatiblePlayback = async (
   }
 
   fs.mkdirSync(transcodeCacheRoot, { recursive: true });
-  const cachePath = path.join(transcodeCacheRoot, `v4-${cacheKey}.mp4`);
+  const cachePath = path.join(transcodeCacheRoot, `v5-${cacheKey}.mp4`);
+
+  if (fs.existsSync(cachePath) && fs.statSync(cachePath).size > 0) {
+    res.setHeader("X-Cypher-Stream-Playback", "cached");
+    res.type("video/mp4");
+    res.sendFile(cachePath);
+    return;
+  }
 
   try {
-    if (fs.existsSync(cachePath) && fs.statSync(cachePath).size > 0) {
-      res.setHeader("X-Cypher-Stream-Playback", "cached");
-      res.sendFile(cachePath);
-      return;
-    }
+    const info = await getStreamInfo(inputPath);
+    const canRemux = info.videoCodec === "h264" &&
+      (!info.audioCodec || ["aac", "mp3"].includes(info.audioCodec));
 
-    await createMp4Cache(
-      inputPath,
-      cachePath,
-      (message) => req.log.info({ message }, "playback preparation"),
+    const tempPath = `${cachePath}.${process.pid}.${Date.now()}.tmp`;
+    const args = [
+      "-hide_banner",
+      "-loglevel", "error",
+      "-nostdin",
+      "-i", inputPath,
+      "-map", "0:v:0",
+      "-map", "0:a:0?",
+      ...(canRemux
+        ? ["-c", "copy"]
+        : [
+            "-c:v", "libx264",
+            "-preset", process.env.FFMPEG_PRESET ?? "veryfast",
+            "-crf", process.env.FFMPEG_CRF ?? "22",
+            "-pix_fmt", "yuv420p",
+            "-c:a", "aac",
+            "-b:a", "128k",
+          ]),
+      // Fragmented MP4 puts the initialization data at the front and allows
+      // the browser to begin playback while FFmpeg is still producing data.
+      "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
+      "-f", "mp4",
+      "pipe:1",
+    ];
+
+    req.log.info(
+      {
+        message: canRemux
+          ? "Streaming browser-compatible MP4 remux"
+          : "Streaming browser-compatible H.264/AAC transcode",
+        file: path.basename(inputPath),
+        videoCodec: info.videoCodec,
+        audioCodec: info.audioCodec,
+      },
+      "playback preparation",
     );
-    if (!res.headersSent) {
-      res.setHeader("X-Cypher-Stream-Playback", "cached-after-preparation");
-      res.sendFile(cachePath);
-    }
+
+    res.status(200);
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Cypher-Stream-Playback", canRemux ? "live-remux" : "live-transcode");
+    res.flushHeaders();
+
+    const ffmpeg = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const output = fs.createWriteStream(tempPath);
+    const stderr: string[] = [];
+
+    let responseClosed = false;
+    let finished = false;
+
+    const cleanupTemp = async () => {
+      if (finished) return;
+      finished = true;
+      await fs.promises.rm(tempPath, { force: true }).catch(() => undefined);
+    };
+
+    req.on("close", () => {
+      responseClosed = true;
+      if (!ffmpeg.killed) ffmpeg.kill("SIGTERM");
+    });
+
+    ffmpeg.stderr.on("data", (chunk) => stderr.push(chunk.toString()));
+
+    ffmpeg.stdout.pipe(res);
+    ffmpeg.stdout.pipe(output);
+
+    ffmpeg.on("error", async (error) => {
+      req.log.error({ err: error }, "FFmpeg playback process failed");
+      output.destroy();
+      await cleanupTemp();
+      if (!responseClosed && !res.headersSent) {
+        res.status(503).json({ error: "Unable to start browser-compatible playback" });
+      }
+    });
+
+    ffmpeg.on("close", async (code) => {
+      output.end();
+      await new Promise<void>((resolve) => output.once("close", resolve));
+
+      if (code === 0 && !responseClosed) {
+        try {
+          await fs.promises.rename(tempPath, cachePath);
+          req.log.info({ cachePath }, "Browser-compatible playback cached");
+        } catch (error) {
+          req.log.warn({ err: error }, "Could not cache completed playback");
+          await fs.promises.rm(tempPath, { force: true }).catch(() => undefined);
+        }
+      } else {
+        await cleanupTemp();
+        if (code !== 0) {
+          req.log.error(
+            { code, stderr: stderr.join("").trim().slice(-4000) },
+            "browser-compatible playback failed",
+          );
+        }
+      }
+    });
   } catch (error) {
-    req.log.error({ err: error }, "browser-compatible transcode failed");
+    req.log.error({ err: error }, "browser-compatible playback setup failed");
     if (!res.headersSent) {
       res.status(503).json({
         error: "Unable to create browser-compatible playback",
@@ -171,7 +209,6 @@ const streamCompatiblePlayback = async (
     }
   }
 };
-
 
 const parsePositiveInt = (value: unknown, fallback: number, max: number) => {
   const parsed = Number(value);
