@@ -1,4 +1,4 @@
-name: Bootstrap from Cypher-Stream
+name: Bootstrap Cypher-Stream Local
 
 on:
   push:
@@ -13,21 +13,17 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message != 'Bootstrap Cypher-Stream Local'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout target repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Checkout source repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: tarieciphertech/Cypher-Stream
           ref: main
           path: source
-
-      - name: Replace target with source
+      - name: Copy source without deleting LAN files
         run: |
-          rsync -a --delete --exclude='.git' source/ ./
+          rsync -a --exclude='.git' source/ ./
           rm -rf source
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
