@@ -1,8 +1,6 @@
 name: Bootstrap Cypher-Stream Local
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -10,7 +8,6 @@ permissions:
 
 jobs:
   bootstrap:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message != 'Bootstrap Cypher-Stream Local'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
