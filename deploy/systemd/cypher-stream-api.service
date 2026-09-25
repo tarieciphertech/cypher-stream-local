@@ -1,0 +1,25 @@
+[Unit]
+Description=Cypher-Stream Local API
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=cypherstream
+Group=cypherstream
+WorkingDirectory=/opt/cypher-stream-local
+EnvironmentFile=/etc/cypher-stream-local.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/node /opt/cypher-stream-local/artifacts/api-server/dist/index.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/cypher-stream-local/media
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
