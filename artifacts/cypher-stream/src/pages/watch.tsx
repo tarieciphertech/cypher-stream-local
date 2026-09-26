@@ -178,7 +178,29 @@ export default function WatchPage() {
     if (!selectedEpisode) return;
     const index = episodes.findIndex((episode) => episode.id === selectedEpisode.id);
     const next = episodes[index + direction];
-    if (next) setSelectedEpisodeId(next.id);
+    if (next) {
+      setPlaybackPreparing(true);
+      setPlaybackError(false);
+      setSelectedEpisodeId(next.id);
+    }
+  };
+
+  const handleEnded = () => {
+    window.localStorage.setItem(currentProgressKey, '100');
+    setProgress(100);
+    if (title.mediaType !== 'series' || !selectedEpisode) return;
+
+    const index = episodes.findIndex((episode) => episode.id === selectedEpisode.id);
+    const next = episodes[index + 1];
+    if (!next) return;
+
+    // Keep the cinema moving: advance to the next episode after the current
+    // presentation finishes. The next video stays paused until the viewer
+    // explicitly starts it, avoiding surprising autoplay on LAN clients.
+    setSelectedEpisodeId(next.id);
+    setProgress(0);
+    setPlaybackError(false);
+    setPlaybackPreparing(false);
   };
 
   return (
@@ -215,10 +237,7 @@ export default function WatchPage() {
                 onLoadedMetadata={(event) => { setPlaybackPreparing(false); restoreProgress(event); }}
                 onCanPlay={() => setPlaybackPreparing(false)}
                 onTimeUpdate={handleTimeUpdate}
-                onEnded={() => {
-                  window.localStorage.setItem(currentProgressKey, '100');
-                  setProgress(100);
-                }}
+                onEnded={handleEnded}
                 onError={() => { setPlaybackPreparing(false); setPlaybackError(true); }}
                 data-testid="video-player"
               />
@@ -283,7 +302,11 @@ export default function WatchPage() {
                             type="button"
                             role="option"
                             aria-selected={selectedEpisode?.id === episode.id}
-                            onClick={() => setSelectedEpisodeId(episode.id)}
+                            onClick={() => {
+                              setPlaybackPreparing(true);
+                              setPlaybackError(false);
+                              setSelectedEpisodeId(episode.id);
+                            }}
                             className={`watch-episode focus-ring ${selectedEpisode?.id === episode.id ? 'watch-episode-active' : ''}`}
                           >
                             <span>{episode.name}</span><small>{selectedEpisode?.id === episode.id ? 'NOW' : `E${String(episode.episodeNumber).padStart(2, '0')}`}</small>
