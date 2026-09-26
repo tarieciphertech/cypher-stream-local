@@ -63,6 +63,7 @@ export default function WatchPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [progress, setProgress] = useState(0);
   const [playbackError, setPlaybackError] = useState(false);
+  const [playbackPreparing, setPlaybackPreparing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const episodes = useMemo(
@@ -125,6 +126,7 @@ export default function WatchPage() {
     if (!title) return;
     setIsSaved(window.localStorage.getItem(`cypher-saved-${title.id}`) === 'true');
     setPlaybackError(false);
+    setPlaybackPreparing(false);
   }, [title]);
 
   useEffect(() => {
@@ -162,7 +164,11 @@ export default function WatchPage() {
   };
 
   const playFromCurrentPosition = () => {
-    void videoRef.current?.play().catch(() => undefined);
+    const video = videoRef.current;
+    if (!video) return;
+    setPlaybackError(false);
+    setPlaybackPreparing(true);
+    void video.play().then(() => setPlaybackPreparing(false)).catch(() => setPlaybackPreparing(false));
   };
 
   const selectRelativeEpisode = (direction: -1 | 1) => {
@@ -199,16 +205,18 @@ export default function WatchPage() {
                 className="watch-player"
                 controls
                 playsInline
-                preload="metadata"
+                preload="auto"
                 poster={title.posterUrl || undefined}
                 src={source}
-                onLoadedMetadata={restoreProgress}
+                onLoadStart={() => { setPlaybackError(false); setPlaybackPreparing(true); }}
+                onLoadedMetadata={(event) => { setPlaybackPreparing(false); restoreProgress(event); }}
+                onCanPlay={() => setPlaybackPreparing(false)}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={() => {
                   window.localStorage.setItem(currentProgressKey, '100');
                   setProgress(100);
                 }}
-                onError={() => setPlaybackError(true)}
+                onError={() => { setPlaybackPreparing(false); setPlaybackError(true); }}
                 data-testid="video-player"
               />
             ) : (
@@ -222,9 +230,14 @@ export default function WatchPage() {
             </div>
           </section>
 
+          {playbackPreparing && !playbackError && (
+            <p className="watch-error-note" role="status" data-testid="status-playback-preparing">
+              Preparing this LAN video for browser playback. The first play may take a few seconds; future plays use the cached MP4.
+            </p>
+          )}
           {playbackError && (
-            <p className="watch-error-note" role="status" data-testid="status-playback-error">
-              Converting this LAN media for browser playback. Playback starts as soon as the first playable video data is ready; the completed MP4 is cached for faster future plays.
+            <p className="watch-error-note" role="alert" data-testid="status-playback-error">
+              This video could not be prepared for browser playback. Check the LAN media file and try again.
             </p>
           )}
 
