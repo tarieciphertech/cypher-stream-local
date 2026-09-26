@@ -91,7 +91,7 @@ const sendCachedMp4 = async (
     return fs.createReadStream(filePath).pipe(res);
   }
 
-  const match = /^bytes=(\\d*)-(\\d*)$/.exec(range);
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
   if (!match) return res.status(416).setHeader("Content-Range", `bytes */${size}`).end();
 
   let start: number;
