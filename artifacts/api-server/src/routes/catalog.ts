@@ -83,16 +83,22 @@ const streamCompatiblePlayback = async (
   }
 
   if (browserPlayableExtensions.has(path.extname(inputPath).toLowerCase())) {
+    res.setHeader("X-Cypher-Stream-Playback", "direct");
     res.sendFile(inputPath);
     return;
   }
 
   fs.mkdirSync(transcodeCacheRoot, { recursive: true });
-  const cachePath = path.join(transcodeCacheRoot, `v5-${cacheKey}.mp4`);
+  const cachePath = path.join(transcodeCacheRoot, `v6-${cacheKey}.mp4`);
 
+  // Completed MP4 caches are served with Express's native byte-range support.
+  // This gives browsers normal seek/buffer behavior instead of making them
+  // consume one long-lived fragmented-MP4 response.
   if (fs.existsSync(cachePath) && fs.statSync(cachePath).size > 0) {
-    res.setHeader("X-Cypher-Stream-Playback", "cached");
+    res.setHeader("X-Cypher-Stream-Playback", "cached-range");
     res.type("video/mp4");
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "public, max-age=3600");
     res.sendFile(cachePath);
     return;
   }
@@ -120,18 +126,18 @@ const streamCompatiblePlayback = async (
             "-c:a", "aac",
             "-b:a", "128k",
           ]),
-      // Fragmented MP4 puts the initialization data at the front and allows
-      // the browser to begin playback while FFmpeg is still producing data.
-      "-movflags", "+frag_keyframe+empty_moov+default_base_moof",
+      // Keep the MP4 browser-friendly and seekable once the preparation pass
+      // completes. The file is atomically renamed into the cache afterwards.
+      "-movflags", "+faststart",
       "-f", "mp4",
-      "pipe:1",
+      tempPath,
     ];
 
     req.log.info(
       {
         message: canRemux
-          ? "Streaming browser-compatible MP4 remux"
-          : "Streaming browser-compatible H.264/AAC transcode",
+          ? "Preparing browser-compatible MP4 remux"
+          : "Preparing browser-compatible H.264/AAC transcode",
         file: path.basename(inputPath),
         videoCodec: info.videoCodec,
         audioCodec: info.audioCodec,
@@ -139,68 +145,49 @@ const streamCompatiblePlayback = async (
       "playback preparation",
     );
 
-    res.status(200);
-    res.setHeader("Content-Type", "video/mp4");
-    res.setHeader("Cache-Control", "no-store");
-    res.setHeader("X-Cypher-Stream-Playback", canRemux ? "live-remux" : "live-transcode");
-    res.flushHeaders();
+    await new Promise<void>((resolve, reject) => {
+      const ffmpeg = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
+      const stderr: string[] = [];
 
-    const ffmpeg = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
-    const output = fs.createWriteStream(tempPath);
-    const stderr: string[] = [];
+      ffmpeg.stderr.on("data", (chunk) => stderr.push(chunk.toString()));
+      ffmpeg.on("error", reject);
+      ffmpeg.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(stderr.join("").trim().slice(-4000) || `FFmpeg exited with code ${code}`));
+      });
 
-    let responseClosed = false;
-    let finished = false;
-
-    const cleanupTemp = async () => {
-      if (finished) return;
-      finished = true;
-      await fs.promises.rm(tempPath, { force: true }).catch(() => undefined);
-    };
-
-    req.on("close", () => {
-      responseClosed = true;
-      if (!ffmpeg.killed) ffmpeg.kill("SIGTERM");
+      req.on("close", () => {
+        if (!res.headersSent && !ffmpeg.killed) ffmpeg.kill("SIGTERM");
+      });
     });
 
-    ffmpeg.stderr.on("data", (chunk) => stderr.push(chunk.toString()));
+    const stat = await fs.promises.stat(tempPath);
+    if (!stat.size) throw new Error("FFmpeg produced an empty playback file");
 
-    ffmpeg.stdout.pipe(res);
-    ffmpeg.stdout.pipe(output);
+    await fs.promises.rename(tempPath, cachePath);
 
-    ffmpeg.on("error", async (error) => {
-      req.log.error({ err: error }, "FFmpeg playback process failed");
-      output.destroy();
-      await cleanupTemp();
-      if (!responseClosed && !res.headersSent) {
-        res.status(503).json({ error: "Unable to start browser-compatible playback" });
-      }
-    });
+    req.log.info(
+      { cachePath, bytes: stat.size },
+      "Browser-compatible playback cached; serving with HTTP ranges",
+    );
 
-    ffmpeg.on("close", async (code) => {
-      output.end();
-      await new Promise<void>((resolve) => output.once("close", resolve));
-
-      if (code === 0 && !responseClosed) {
-        try {
-          await fs.promises.rename(tempPath, cachePath);
-          req.log.info({ cachePath }, "Browser-compatible playback cached");
-        } catch (error) {
-          req.log.warn({ err: error }, "Could not cache completed playback");
-          await fs.promises.rm(tempPath, { force: true }).catch(() => undefined);
-        }
-      } else {
-        await cleanupTemp();
-        if (code !== 0) {
-          req.log.error(
-            { code, stderr: stderr.join("").trim().slice(-4000) },
-            "browser-compatible playback failed",
-          );
-        }
-      }
-    });
+    res.setHeader("X-Cypher-Stream-Playback", canRemux ? "remux-range" : "transcode-range");
+    res.type("video/mp4");
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.sendFile(cachePath);
   } catch (error) {
-    req.log.error({ err: error }, "browser-compatible playback setup failed");
+    req.log.error({ err: error }, "browser-compatible playback failed");
+    const tempPrefix = `${cachePath}.`;
+    try {
+      for (const entry of await fs.promises.readdir(transcodeCacheRoot)) {
+        if (entry.startsWith(path.basename(tempPrefix)) && entry.endsWith(".tmp")) {
+          await fs.promises.rm(path.join(transcodeCacheRoot, entry), { force: true });
+        }
+      }
+    } catch {
+      // Best-effort cleanup only.
+    }
     if (!res.headersSent) {
       res.status(503).json({
         error: "Unable to create browser-compatible playback",
