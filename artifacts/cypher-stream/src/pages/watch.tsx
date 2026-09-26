@@ -198,6 +198,8 @@ export default function WatchPage() {
     // presentation finishes. The next video stays paused until the viewer
     // explicitly starts it, avoiding surprising autoplay on LAN clients.
     setSelectedEpisodeId(next.id);
+    // Keep the series visible in Continue Watching even before the next episode starts.
+    window.localStorage.setItem(progressKey(title.id, next.id), '0');
     setProgress(0);
     setPlaybackError(false);
     setPlaybackPreparing(false);
