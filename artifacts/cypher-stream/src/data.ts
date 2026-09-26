@@ -23,6 +23,7 @@ export interface Title {
   playbackSource?: string;
   episodes?: Episode[];
   progress?: number;
+  hasLocalPlayback?: boolean;
   badge?: string;
 }
 
