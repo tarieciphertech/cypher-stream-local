@@ -139,11 +139,10 @@ const streamCompatiblePlayback = async (
   }
 
   fs.mkdirSync(transcodeCacheRoot, { recursive: true });
-  const cachePath = path.join(transcodeCacheRoot, `v6-${cacheKey}.mp4`);
+  const cachePath = path.join(transcodeCacheRoot, `v7-${cacheKey}.mp4`);
 
-  // Completed MP4 caches are served with Express's native byte-range support.
-  // This gives browsers normal seek/buffer behavior instead of making them
-  // consume one long-lived fragmented-MP4 response.
+  // Completed standard MP4 caches are served with native HTTP byte ranges.
+  // The cache is versioned so older fragmented-MP4 artifacts are never reused.
   if (fs.existsSync(cachePath) && fs.statSync(cachePath).size > 0) {
     await sendCachedMp4(req, res, cachePath, "cached-range");
     return;
@@ -172,8 +171,9 @@ const streamCompatiblePlayback = async (
             "-c:a", "aac",
             "-b:a", "128k",
           ]),
-      // Keep the MP4 browser-friendly and seekable once the preparation pass
-      // completes. The file is atomically renamed into the cache afterwards.
+      // Produce a standard MP4 with metadata at the front so Chromium can
+      // start playback immediately and seek using ordinary HTTP ranges.
+      // The file is atomically renamed into the cache afterwards.
       "-movflags", "+faststart",
       "-f", "mp4",
       tempPath,
