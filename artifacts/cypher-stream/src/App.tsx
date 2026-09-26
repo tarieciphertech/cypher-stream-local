@@ -72,6 +72,19 @@ const formatDuration = (minutes: number | null, type: Title['type']) => {
   return hours ? `${hours}h ${remaining}m` : `${remaining}m`;
 };
 
+const readLocalProgress = (titleId: string) => {
+  if (typeof window === 'undefined') return 0;
+  const prefix = `cypher-playback-${titleId}-`;
+  let highest = 0;
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (!key?.startsWith(prefix)) continue;
+    const value = Number(window.localStorage.getItem(key));
+    if (Number.isFinite(value)) highest = Math.max(highest, Math.min(100, Math.max(0, value)));
+  }
+  return highest > 0 && highest < 100 ? Math.round(highest * 10) / 10 : 0;
+};
+
 const catalogToTitle = (item: CatalogTitle): Title => ({
   id: item.id,
   name: item.name,
@@ -86,6 +99,7 @@ const catalogToTitle = (item: CatalogTitle): Title => ({
   backdrop: item.backdropUrl || '',
   accent: item.accent || '#e8bc71',
   playbackSource: item.sourceUrl || undefined,
+  progress: readLocalProgress(item.id),
   badge: item.badge || undefined,
 });
 
