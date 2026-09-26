@@ -432,6 +432,27 @@ function BrowseSurface() {
     window.localStorage.setItem(savedListKey, JSON.stringify(savedIds));
   }, [savedIds]);
 
+  // Playback progress lives in localStorage, so keep the browse catalogue in sync
+  // when returning from the player, switching tabs, or another same-origin tab.
+  useEffect(() => {
+    const refreshProgress = () => {
+      setCatalogTitles((current) => current.map((title) => ({
+        ...title,
+        progress: readLocalProgress(title.id),
+      })));
+    };
+
+    window.addEventListener('storage', refreshProgress);
+    window.addEventListener('focus', refreshProgress);
+    document.addEventListener('visibilitychange', refreshProgress);
+
+    return () => {
+      window.removeEventListener('storage', refreshProgress);
+      window.removeEventListener('focus', refreshProgress);
+      document.removeEventListener('visibilitychange', refreshProgress);
+    };
+  }, []);
+
   const filteredTitles = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return catalogTitles.filter((title) => {
