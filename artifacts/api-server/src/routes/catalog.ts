@@ -99,7 +99,7 @@ const streamCompatiblePlayback = async (
     res.type("video/mp4");
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Cache-Control", "public, max-age=3600");
-    res.sendFile(cachePath);
+    res.status(500).end();
     return;
   }
 
