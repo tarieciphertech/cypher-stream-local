@@ -73,7 +73,7 @@ const formatDuration = (minutes: number | null, type: Title['type']) => {
 };
 
 const readLocalPlaybackState = (titleId: string) => {
-  if (typeof window === 'undefined') return 0;
+  if (typeof window === 'undefined') return { progress: 0, active: false };
   const prefix = `cypher-playback-${titleId}-`;
   let highest = 0;
   for (let index = 0; index < window.localStorage.length; index += 1) {
