@@ -70,6 +70,56 @@ const getStreamInfo = (inputPath: string) =>
     });
   });
 
+
+const sendCachedMp4 = async (
+  req: import("express").Request,
+  res: import("express").Response,
+  filePath: string,
+  playbackHeader: string,
+) => {
+  const stat = await fs.promises.stat(filePath);
+  const size = stat.size;
+  const range = req.headers.range;
+  res.setHeader("X-Cypher-Stream-Playback", playbackHeader);
+  res.setHeader("Content-Type", "video/mp4");
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+
+  if (!range) {
+    res.setHeader("Content-Length", String(size));
+    if (req.method === "HEAD") return res.status(200).end();
+    return fs.createReadStream(filePath).pipe(res);
+  }
+
+  const match = /^bytes=(\\d*)-(\\d*)$/.exec(range);
+  if (!match) return res.status(416).setHeader("Content-Range", `bytes */${size}`).end();
+
+  let start: number;
+  let end: number;
+  if (match[1] === "") {
+    const suffix = Number(match[2]);
+    if (!Number.isSafeInteger(suffix) || suffix <= 0) {
+      return res.status(416).setHeader("Content-Range", `bytes */${size}`).end();
+    }
+    start = Math.max(size - suffix, 0);
+    end = size - 1;
+  } else {
+    start = Number(match[1]);
+    end = match[2] === "" ? size - 1 : Number(match[2]);
+  }
+
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || start >= size) {
+    return res.status(416).setHeader("Content-Range", `bytes */${size}`).end();
+  }
+
+  end = Math.min(end, size - 1);
+  res.status(206);
+  res.setHeader("Content-Range", `bytes ${start}-${end}/${size}`);
+  res.setHeader("Content-Length", String(end - start + 1));
+  if (req.method === "HEAD") return res.end();
+  return fs.createReadStream(filePath, { start, end }).pipe(res);
+};
+
 const streamCompatiblePlayback = async (
   req: import("express").Request,
   res: import("express").Response,
@@ -95,11 +145,7 @@ const streamCompatiblePlayback = async (
   // This gives browsers normal seek/buffer behavior instead of making them
   // consume one long-lived fragmented-MP4 response.
   if (fs.existsSync(cachePath) && fs.statSync(cachePath).size > 0) {
-    res.setHeader("X-Cypher-Stream-Playback", "cached-range");
-    res.type("video/mp4");
-    res.setHeader("Accept-Ranges", "bytes");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.status(500).end();
+    await sendCachedMp4(req, res, cachePath, "cached-range");
     return;
   }
 
@@ -171,11 +217,7 @@ const streamCompatiblePlayback = async (
       "Browser-compatible playback cached; serving with HTTP ranges",
     );
 
-    res.setHeader("X-Cypher-Stream-Playback", canRemux ? "remux-range" : "transcode-range");
-    res.type("video/mp4");
-    res.setHeader("Accept-Ranges", "bytes");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.sendFile(cachePath);
+    await sendCachedMp4(req, res, cachePath, canRemux ? "remux-range" : "transcode-range");
   } catch (error) {
     req.log.error({ err: error }, "browser-compatible playback failed");
     const tempPrefix = `${cachePath}.`;
