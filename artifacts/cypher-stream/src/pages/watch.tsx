@@ -9,6 +9,9 @@ const posterFallback = (title: CatalogTitleDetail) =>
 const progressKey = (titleId: string, episodeId?: string) =>
   `cypher-playback-${titleId}-${episodeId || 'feature'}`;
 
+const playbackUrl = (base: string, kind: 'episode' | 'title', id: string) =>
+  `${base}${base.includes('?') ? '&' : '?'}playback=v7-${kind}-${encodeURIComponent(id)}`;
+
 function ScreeningSkeleton() {
   return (
     <div className="watch-shell grain" data-testid="loading-watch-page">
@@ -80,9 +83,9 @@ export default function WatchPage() {
     ? /\.(mp4|webm|m4v|mov)(?:[?#].*)?$/i.test(rawSource)
       ? rawSource
       : selectedEpisode
-        ? `/api/playback/episodes/${encodeURIComponent(selectedEpisode.id)}`
+        ? playbackUrl(`/api/playback/episodes/${encodeURIComponent(selectedEpisode.id)}`, 'episode', selectedEpisode.id)
         : title
-          ? `/api/playback/titles/${encodeURIComponent(title.id)}`
+          ? playbackUrl(`/api/playback/titles/${encodeURIComponent(title.id)}`, 'title', title.id)
           : null
     : null;
   const currentProgressKey = title ? progressKey(title.id, selectedEpisode?.id) : '';
