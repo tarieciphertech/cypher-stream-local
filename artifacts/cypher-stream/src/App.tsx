@@ -72,7 +72,7 @@ const formatDuration = (minutes: number | null, type: Title['type']) => {
   return hours ? `${hours}h ${remaining}m` : `${remaining}m`;
 };
 
-const readLocalProgress = (titleId: string) => {
+const readLocalPlaybackState = (titleId: string) => {
   if (typeof window === 'undefined') return 0;
   const prefix = `cypher-playback-${titleId}-`;
   let highest = 0;
@@ -82,8 +82,14 @@ const readLocalProgress = (titleId: string) => {
     const value = Number(window.localStorage.getItem(key));
     if (Number.isFinite(value)) highest = Math.max(highest, Math.min(100, Math.max(0, value)));
   }
-  return highest > 0 && highest < 100 ? Math.round(highest * 10) / 10 : 0;
+  return {
+    progress: highest > 0 && highest < 100 ? Math.round(highest * 10) / 10 : 0,
+    active: highest < 100 && Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index)).some((key) => key?.startsWith(prefix) && Number(window.localStorage.getItem(key)) < 100),
+  };
 };
+
+const readLocalProgress = (titleId: string) => readLocalPlaybackState(titleId).progress;
+const hasLocalPlayback = (titleId: string) => readLocalPlaybackState(titleId).active;
 
 const catalogToTitle = (item: CatalogTitle): Title => ({
   id: item.id,
@@ -100,6 +106,7 @@ const catalogToTitle = (item: CatalogTitle): Title => ({
   accent: item.accent || '#e8bc71',
   playbackSource: item.sourceUrl || undefined,
   progress: readLocalProgress(item.id),
+  hasLocalPlayback: hasLocalPlayback(item.id),
   badge: item.badge || undefined,
 });
 
@@ -439,6 +446,7 @@ function BrowseSurface() {
       setCatalogTitles((current) => current.map((title) => ({
         ...title,
         progress: readLocalProgress(title.id),
+        hasLocalPlayback: hasLocalPlayback(title.id),
       })));
     };
 
@@ -474,7 +482,7 @@ function BrowseSurface() {
   const searchActive = query.trim().length > 0;
   const featuredTitle = catalogTitles.find((title) => title.type === 'film') || catalogTitles[0] || null;
   const showHomeHero = activeSection === 'home' && !searchActive && !!featuredTitle;
-  const continueTitles = catalogTitles.filter((title) => title.progress);
+  const continueTitles = catalogTitles.filter((title) => title.hasLocalPlayback);
   const newTitles = catalogTitles.filter((title) => !title.progress);
 
   if (catalogLoading) {
