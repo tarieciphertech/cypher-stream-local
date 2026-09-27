@@ -762,9 +762,6 @@ function TitleDetailPage() {
     });
   };
 
-  if (loading) return <div className="cypher-app grain flex min-h-[100dvh] items-center justify-center"><p className="mono text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Opening transmission…</p></div>;
-  if (error || !title) return <div className="cypher-app grain flex min-h-[100dvh] flex-col items-center justify-center px-5 text-center"><p className="mono mb-3 text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Signal not found</p><h1 className="display text-4xl font-bold text-[#eeebda]">That title is not in the local index.</h1><button type="button" onClick={() => setLocation('/')} className="focus-ring mt-7 rounded-full bg-[#eeebda] px-5 py-2.5 text-[11px] font-bold text-[#14151d]">Return home</button></div>;
-
   const progress = title.progress ?? 0;
   const canonical = `/title/${title.slug || title.id}`;
   useEffect(() => {
@@ -807,6 +804,9 @@ function TitleDetailPage() {
       document.head.querySelectorAll('script[data-cypher-title="true"]').forEach((node) => node.remove());
     };
   }, [title, canonical]);
+  if (loading) return <div className="cypher-app grain flex min-h-[100dvh] items-center justify-center"><p className="mono text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Opening transmission…</p></div>;
+  if (error || !title) return <div className="cypher-app grain flex min-h-[100dvh] flex-col items-center justify-center px-5 text-center"><p className="mono mb-3 text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Signal not found</p><h1 className="display text-4xl font-bold text-[#eeebda]">That title is not in the local index.</h1><button type="button" onClick={() => setLocation('/')} className="focus-ring mt-7 rounded-full bg-[#eeebda] px-5 py-2.5 text-[11px] font-bold text-[#14151d]">Return home</button></div>;
+
   const play = () => setLocation(`/watch/${title.id}`);
 
   return (
