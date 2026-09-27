@@ -77,7 +77,7 @@ const catalog = [
     featured: false,
     badge: null,
     genres: ["Crime", "Drama", "Comedy"],
-  },,
+  },
   {
     slug: "american-ultra",
     name: "American Ultra",
