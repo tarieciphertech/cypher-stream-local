@@ -245,7 +245,7 @@ function PosterCard({
         </div>
         {title.progress && (
           <div className="absolute bottom-0 left-0 right-0 z-10 h-1 bg-white/20">
-            <div className="h-full bg-[#c4e56b]" style={{ width: `${progress}%` }} />
+            <div className="h-full bg-[#c4e56b]" style={{ width: `${title.progress ?? 0}%` }} />
           </div>
         )}
       </div>
@@ -381,7 +381,7 @@ function DetailPanel({ title, isSaved, onClose, onPlay, onToggleSaved }: { title
           <button type="button" aria-label="Close title details" onClick={onClose} data-testid="button-close-details-top" className="focus-ring detail-close"><X size={16} /></button>
           <div className="detail-hero-copy">
             <p className="mono detail-kicker">{title.type === 'series' ? 'Series transmission' : 'Feature transmission'}</p>
-            {title.logo ? <img src={title.logo} alt={title.name} className="detail-logo" /> : <h2 className="display detail-title">{title.name}</h2>}
+            <h2 className="display detail-title">{title.name}</h2>
             <div className="detail-meta">
               <span className="detail-signal">{title.rating}</span><span>{title.year}</span><span>{title.duration}</span>
               {title.genres.slice(0, 3).map((genre) => <span key={genre}>{genre}</span>)}
@@ -392,9 +392,9 @@ function DetailPanel({ title, isSaved, onClose, onPlay, onToggleSaved }: { title
           <div className="detail-main">
             <p className="mono detail-index-line"><span>CY / {title.type === 'series' ? 'SERIES' : 'FILM'}</span><span>{title.hasLocalPlayback ? progressLabel : 'Ready to transmit'}</span></p>
             <p className="detail-description">{title.description}</p>
-            {progress > 0 && <div className="detail-progress" aria-label={progressLabel}><span style={{ width: `${title.progress}%` }} /></div>}
+            {progress > 0 && <div className="detail-progress" aria-label={progressLabel}><span style={{ width: `${progress}%` }} /></div>}
             <div className="detail-actions">
-              <button type="button" onClick={onPlay} data-testid="button-detail-play" className="focus-ring detail-play"><Play size={14} fill="currentColor" /> {title.progress > 0 ? 'Resume' : 'Play now'}</button>
+              <button type="button" onClick={onPlay} data-testid="button-detail-play" className="focus-ring detail-play"><Play size={14} fill="currentColor" /> {progress > 0 ? 'Resume' : 'Play now'}</button>
               <button type="button" onClick={onToggleSaved} data-testid="button-detail-save" className="focus-ring detail-save">{isSaved ? <Check size={14} /> : <Plus size={14} />} {isSaved ? 'In My List' : 'My List'}</button>
             </div>
           </div>
