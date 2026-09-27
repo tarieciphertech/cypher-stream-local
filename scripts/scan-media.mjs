@@ -66,6 +66,20 @@ function shellPsql(sql) {
   });
 }
 
+function normalizeMovieName(value) {
+  return String(value)
+    .replace(/\.[a-z0-9]{2,5}$/i, "")
+    .replace(/\s*\((?:19|20)\d{2}\)\s*$/, "")
+    .replace(/\s+(?:19|20)\d{2}(?=\s|$).*$/i, "")
+    .replace(/[._]+/g, " ")
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/\((?:19|20)\d{2}\)/g, " ")
+    .replace(/\b(?:1080p|2160p|720p|480p|4k|bluray|brrip|webrip|web-dl|web|hdr|x264|x265|hevc|h264|aac(?:[0-9.]+)?|ddp(?:[0-9.]+)?|yts(?:\.mx)?|yify|etrg|bokutox|bone)\b/gi, " ")
+    .replace(/[-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "Untitled Film";
+}
+
 const moviesRoot = path.join(root, "movies");
 const seriesRoot = path.join(root, "series");
 const files = [
@@ -85,7 +99,9 @@ for (const item of files) {
   const parts = normalized.split("/").filter(Boolean);
   const fileName = path.basename(item.file);
   const stem = path.basename(fileName, path.extname(fileName));
-  let titleName = stem;
+  let titleName = item.type === "film"
+    ? normalizeMovieName(parts[0] ?? stem)
+    : stem;
   let seasonNumber = null;
   let episodeNumber = null;
 
@@ -149,8 +165,12 @@ for (const item of files) {
   statements.push(`
 insert into public.titles (id, slug, name, media_type, runtime_minutes, status, updated_at)
 values ('${esc(titleId)}', '${esc(slug)}', '${esc(titleName)}', '${item.type}', ${runtimeMinutes}, 'published', now())
-on conflict (id) do update set name=excluded.name, media_type=excluded.media_type,
-runtime_minutes=excluded.runtime_minutes, status='published', updated_at=now();
+on conflict (id) do update set
+  name=excluded.name,
+  media_type=excluded.media_type,
+  runtime_minutes=case when public.titles.runtime_minutes is null then excluded.runtime_minutes else public.titles.runtime_minutes end,
+  status=case when public.titles.status = 'archived' then public.titles.status else 'published' end,
+  updated_at=now();
 `);
 
   if (item.type === "film") {
