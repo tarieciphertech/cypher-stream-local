@@ -201,10 +201,14 @@ set
   featured = ${item.featured ? "true" : "false"},
   badge = ${item.badge == null ? "null" : `'${esc(item.badge)}'`},
   updated_at = now()
-where slug = '${esc(item.slug)}'
-   or lower(name) = lower('${esc(item.name)}')
-order by case when slug = '${esc(item.slug)}' then 0 else 1 end
-limit 1;
+where id = (
+  select id
+  from public.titles
+  where slug = '${esc(item.slug)}'
+     or lower(name) = lower('${esc(item.name)}')
+  order by case when slug = '${esc(item.slug)}' then 0 else 1 end
+  limit 1
+);
 
 delete from public.title_genres
 where title_id = (
