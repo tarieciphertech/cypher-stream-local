@@ -368,42 +368,49 @@ function MyListEmpty({ onBrowse }: { onBrowse: () => void }) {
 }
 
 function DetailPanel({ title, isSaved, onClose, onPlay, onToggleSaved }: { title: Title; isSaved: boolean; onClose: () => void; onPlay: () => void; onToggleSaved: () => void }) {
+  const progressLabel = title.progress > 0 ? `${title.progress}% watched` : 'Not started';
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#05060b]/80 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`${title.name} details`} data-testid="detail-overlay">
-      <button type="button" aria-label="Close details" onClick={onClose} data-testid="button-close-details" className="absolute inset-0 cursor-default" />
-      <div className="relative max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-2xl border border-white/10 bg-[#171822] shadow-2xl sm:rounded-2xl">
-        <div className="relative h-52 overflow-hidden sm:h-72">
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: title.backdrop ? `url(${title.backdrop}), ${posterFallback(title.name, title.accent)}` : posterFallback(title.name, title.accent) }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#171822] via-[#171822]/20 to-transparent" />
-          <button type="button" aria-label="Close title details" onClick={onClose} data-testid="button-close-details-top" className="focus-ring absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-[#0b0c14]/50 text-[#eeebda] hover:border-[#e8bc71]"><X size={16} /></button>
-          <div className="absolute bottom-5 left-6 right-6 sm:left-9">
-            <p className="mono mb-2 text-[9px] uppercase tracking-[.25em] text-[#c4e56b]">{title.eyebrow}</p>
-            <h2 className="display text-3xl font-bold tracking-[-.04em] text-[#f3f0df] sm:text-5xl">{title.name}</h2>
+    <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label={`${title.name} details`} data-testid="detail-overlay">
+      <button type="button" aria-label="Close details" onClick={onClose} data-testid="button-close-details" className="detail-dismiss-layer" />
+      <section className="detail-panel reveal" data-testid="detail-panel">
+        <div className="detail-hero">
+          <div className="detail-hero-art" style={{ backgroundImage: title.backdrop ? `url(${title.backdrop}), ${posterFallback(title.name, title.accent)}` : posterFallback(title.name, title.accent) }} />
+          <div className="detail-hero-vignette" />
+          <div className="detail-scanline" />
+          <button type="button" aria-label="Close title details" onClick={onClose} data-testid="button-close-details-top" className="focus-ring detail-close"><X size={16} /></button>
+          <div className="detail-hero-copy">
+            <p className="mono detail-kicker">{title.type === 'series' ? 'Series transmission' : 'Feature transmission'}</p>
+            {title.logo ? <img src={title.logo} alt={title.name} className="detail-logo" /> : <h2 className="display detail-title">{title.name}</h2>}
+            <div className="detail-meta">
+              <span className="detail-signal">{title.rating}</span><span>{title.year}</span><span>{title.duration}</span>
+              {title.genres.slice(0, 3).map((genre) => <span key={genre}>{genre}</span>)}
+            </div>
           </div>
         </div>
-        <div className="grid gap-7 px-6 pb-7 pt-2 sm:grid-cols-[1fr_220px] sm:px-9 sm:pb-9">
-          <div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-[#b4b2bb]">
-              <span className="text-[#c4e56b]">{title.rating}</span><span className="text-white/20">/</span><span>{title.year}</span><span className="text-white/20">/</span><span>{title.duration}</span>
-              {title.genres.map((genre) => <span key={genre} className="rounded-full border border-white/10 px-2 py-1">{genre}</span>)}
-            </div>
-            <p className="mt-5 max-w-xl text-sm leading-7 text-[#b8b6be]">{title.description}</p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <button type="button" onClick={onPlay} data-testid="button-detail-play" className="focus-ring flex items-center gap-2 rounded-full bg-[#eeebda] px-5 py-3 text-[11px] font-bold text-[#14151d] hover:bg-[#fffced]"><Play size={14} fill="currentColor" /> Play now</button>
-              <button type="button" onClick={onToggleSaved} data-testid="button-detail-save" className="focus-ring flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-[11px] font-semibold text-[#eeebda] hover:border-[#e8bc71] hover:text-[#e8bc71]">{isSaved ? <Check size={14} /> : <Plus size={14} />} {isSaved ? 'In My List' : 'My List'}</button>
+        <div className="detail-body">
+          <div className="detail-main">
+            <p className="mono detail-index-line"><span>CY / {title.type === 'series' ? 'SERIES' : 'FILM'}</span><span>{title.hasLocalPlayback ? progressLabel : 'Ready to transmit'}</span></p>
+            <p className="detail-description">{title.description}</p>
+            {title.progress > 0 && <div className="detail-progress" aria-label={progressLabel}><span style={{ width: `${title.progress}%` }} /></div>}
+            <div className="detail-actions">
+              <button type="button" onClick={onPlay} data-testid="button-detail-play" className="focus-ring detail-play"><Play size={14} fill="currentColor" /> {title.progress > 0 ? 'Resume' : 'Play now'}</button>
+              <button type="button" onClick={onToggleSaved} data-testid="button-detail-save" className="focus-ring detail-save">{isSaved ? <Check size={14} /> : <Plus size={14} />} {isSaved ? 'In My List' : 'My List'}</button>
             </div>
           </div>
-          <aside className="border-t border-white/10 pt-5 text-[11px] text-[#9695a2] sm:border-l sm:border-t-0 sm:pl-7 sm:pt-0">
-            <p className="mono mb-3 text-[9px] uppercase tracking-[.2em] text-[#777783]">The short read</p>
-            <p className="leading-6">A carefully chosen transmission from the Cypher shelf. No autoplay. No noise. Just a good next watch.</p>
-            <button type="button" onClick={() => alert('Trailer playback is coming soon.')} data-testid="button-detail-trailer" className="mt-5 flex items-center gap-2 text-[#e8bc71] hover:text-[#f4d79a]"><Volume2 size={14} /> Watch trailer <ArrowUpRight size={12} /></button>
+          <aside className="detail-aside">
+            <div className="detail-poster"><ImageCover title={title} /><span className="mono">{title.type === 'series' ? 'SERIES' : 'FILM'}</span></div>
+            <div className="detail-facts">
+              <div><span>Format</span><strong>{title.type === 'series' ? 'Multi-season series' : 'Feature film'}</strong></div>
+              <div><span>Genres</span><strong>{title.genres.join(' · ') || 'Unclassified'}</strong></div>
+              <div><span>Access</span><strong>Local catalogue</strong></div>
+            </div>
+            <button type="button" onClick={() => alert('Trailer playback is coming soon.')} data-testid="button-detail-trailer" className="detail-trailer focus-ring"><Volume2 size={13} /> Trailer unavailable <ArrowUpRight size={11} /></button>
           </aside>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
-
 function BrowseSurface() {
   const [activeSection, setActiveSection] = useState<NavKey>('home');
   const [query, setQuery] = useState('');
