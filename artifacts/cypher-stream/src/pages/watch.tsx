@@ -113,7 +113,15 @@ export default function WatchPage() {
               .filter((item) => detail.genres.length === 0 || item.genres.some((genre) => detail.genres.some((g) => g.id === genre.id)))
               .slice(0, 4),
           );
-          setSelectedEpisodeId(detail.seasons[0]?.episodes[0]?.id || '');
+          const allEpisodes = detail.seasons.flatMap((season) => season.episodes);
+          const resumableEpisode = allEpisodes
+            .map((episode) => ({
+              episode,
+              progress: Number(window.localStorage.getItem(progressKey(detail.id, episode.id))),
+            }))
+            .filter(({ progress }) => Number.isFinite(progress) && progress >= 0 && progress < 100)
+            .sort((a, b) => b.progress - a.progress)[0]?.episode;
+          setSelectedEpisodeId(resumableEpisode?.id || allEpisodes[0]?.id || '');
         }
       } catch {
         if (!cancelled) setTitle(null);
