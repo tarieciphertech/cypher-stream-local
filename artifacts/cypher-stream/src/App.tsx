@@ -75,16 +75,25 @@ const formatDuration = (minutes: number | null, type: Title['type']) => {
 const readLocalPlaybackState = (titleId: string) => {
   if (typeof window === 'undefined') return { progress: 0, active: false };
   const prefix = `cypher-playback-${titleId}-`;
-  let highest = 0;
+  let highestActiveProgress = 0;
+  let active = false;
+
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index);
     if (!key?.startsWith(prefix)) continue;
     const value = Number(window.localStorage.getItem(key));
-    if (Number.isFinite(value)) highest = Math.max(highest, Math.min(100, Math.max(0, value)));
+    if (!Number.isFinite(value)) continue;
+
+    const normalized = Math.min(100, Math.max(0, value));
+    if (normalized < 100) {
+      active = true;
+      highestActiveProgress = Math.max(highestActiveProgress, normalized);
+    }
   }
+
   return {
-    progress: highest > 0 && highest < 100 ? Math.round(highest * 10) / 10 : 0,
-    active: highest < 100 && Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index)).some((key) => key?.startsWith(prefix) && Number(window.localStorage.getItem(key)) < 100),
+    progress: highestActiveProgress > 0 ? Math.round(highestActiveProgress * 10) / 10 : 0,
+    active,
   };
 };
 
