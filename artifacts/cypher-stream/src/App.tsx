@@ -636,9 +636,29 @@ function BrowseSurface() {
               )}
               {activeSection === 'home' && (
                 <>
-                  <TitleRow label="Tonight’s signal" kicker="Curated this week" items={filteredTitles.filter((title) => !continueTitles.includes(title)).slice(0, 6)} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
+                  {catalogTitles.filter((title) => title.type === 'series').length > 0 && (
+                    <TitleRow
+                      label="Tonight’s signal"
+                      kicker="Series in the local index"
+                      items={catalogTitles.filter((title) => title.type === 'series')}
+                      saved={saved}
+                      onOpen={setSelectedTitle}
+                      onPlay={openWatch}
+                      onToggleSaved={toggleSaved}
+                    />
+                  )}
                   <GenreGrid onGenre={(genre) => setQuery(genre)} />
-                  <TitleRow label="Further transmissions" kicker="A little off-center" items={newTitles} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
+                  {catalogTitles.filter((title) => title.type === 'film').length > 0 && (
+                    <TitleRow
+                      label="Further transmissions"
+                      kicker="Feature films from the archive"
+                      items={catalogTitles.filter((title) => title.type === 'film')}
+                      saved={saved}
+                      onOpen={setSelectedTitle}
+                      onPlay={openWatch}
+                      onToggleSaved={toggleSaved}
+                    />
+                  )}
                 </>
               )}
               {showHomeHero && <div className="reveal mt-16 border-y border-white/[.08] py-8 sm:flex sm:items-center sm:justify-between" data-testid="section-membership-note"><div><p className="mono mb-2 text-[9px] uppercase tracking-[.25em] text-[#e8bc71]">The Cypher promise</p><p className="display text-xl font-bold tracking-[-.03em] text-[#eeebda]">Less noise. More afterglow.</p></div><p className="mt-3 max-w-sm text-xs leading-5 text-[#85848f] sm:mt-0">A human-shaped catalogue of films and series for the beautifully curious. We add a small batch every Thursday.</p><button type="button" onClick={() => alert('You are already on the list.')} data-testid="button-join-cypher" className="focus-ring mt-5 flex shrink-0 items-center gap-2 text-[11px] font-bold text-[#c4e56b] sm:mt-0">Stay in the loop <ArrowUpRight size={14} /></button></div>}
