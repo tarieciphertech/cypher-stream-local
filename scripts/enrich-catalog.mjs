@@ -77,7 +77,67 @@ const catalog = [
     featured: false,
     badge: null,
     genres: ["Crime", "Drama", "Comedy"],
+  },,
+  {
+    slug: "american-ultra",
+    name: "American Ultra",
+    synopsis:
+      "Mike Howell is an unmotivated small-town stoner who discovers that he is actually a highly trained government operative. When his forgotten skills are activated, he and his girlfriend Phoebe become targets of a deadly operation.",
+    mediaType: "film",
+    releaseYear: 2015,
+    maturityRating: "18",
+    poster: "https://images.fandango.com/ImageRenderer/0/0/redesign/static/img/default_poster--dark-mode.png/0/images/masterrepository/Fandango/183689/AmUltra_%20Poster.jpg",
+    backdrop: "https://images.fandango.com/ImageRenderer/0/0/redesign/static/img/default_poster--dark-mode.png/0/images/masterrepository/Fandango/183689/AmUltra_%20Poster.jpg",
+    accent: "#d26b3d",
+    featured: false,
+    badge: null,
+    genres: ["Action", "Comedy", "Thriller"],
   },
+  {
+    slug: "crime-101",
+    name: "Crime 101",
+    synopsis:
+      "An elusive thief planning one final score crosses paths with a disillusioned insurance broker while a relentless detective follows the trail of a multi-million-dollar heist.",
+    mediaType: "film",
+    releaseYear: 2026,
+    maturityRating: "16",
+    poster: "https://image.tmdb.org/t/p/original/6uZPu5SWTtDpRqhMJH40HLWts2v.jpg",
+    backdrop: "https://assets.voxcinemas.com/posters/P_HO00012856.jpg",
+    accent: "#a88758",
+    featured: false,
+    badge: null,
+    genres: ["Crime", "Thriller"],
+  },
+  {
+    slug: "this-is-where-i-leave-you",
+    name: "This Is Where I Leave You",
+    synopsis:
+      "After their father dies, four adult siblings return to their childhood home and are asked to stay together for a week, forcing old relationships, rivalries, grief, and family history back into the open.",
+    mediaType: "film",
+    releaseYear: 2014,
+    maturityRating: "16",
+    poster: "https://image.tmdb.org/t/p/original/5jqH71EeeVPsq1Rua1aSHBi3zoz.jpg",
+    backdrop: "https://image.tmdb.org/t/p/original/njK3bfEYuqwjs8YTkpaDtkoTmVr.jpg",
+    accent: "#7d8f9d",
+    featured: false,
+    badge: null,
+    genres: ["Drama", "Comedy"],
+  },
+  {
+    slug: "reacher",
+    name: "Reacher",
+    synopsis:
+      "Jack Reacher, a veteran military police investigator, travels the country as a drifter while uncovering dangerous conspiracies, criminal networks, and cases that pull him back into action.",
+    mediaType: "series",
+    releaseYear: 2022,
+    maturityRating: "TV-MA",
+    poster: "https://image.tmdb.org/t/p/original/31GlRQMiDunO8cl3NxTz34U64rf.jpg",
+    backdrop: "https://image.tmdb.org/t/p/original/JYgqp8g2kI3SEus9XBDSHukfBN.jpg",
+    accent: "#6f8794",
+    featured: true,
+    badge: "NEW",
+    genres: ["Action", "Crime", "Drama"],
+  }
 ];
 
 const esc = (value) => String(value ?? "").replaceAll("'", "''");
