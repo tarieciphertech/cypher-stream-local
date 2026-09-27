@@ -245,7 +245,7 @@ function PosterCard({
         </div>
         {title.progress && (
           <div className="absolute bottom-0 left-0 right-0 z-10 h-1 bg-white/20">
-            <div className="h-full bg-[#c4e56b]" style={{ width: `${title.progress}%` }} />
+            <div className="h-full bg-[#c4e56b]" style={{ width: `${progress}%` }} />
           </div>
         )}
       </div>
@@ -368,7 +368,8 @@ function MyListEmpty({ onBrowse }: { onBrowse: () => void }) {
 }
 
 function DetailPanel({ title, isSaved, onClose, onPlay, onToggleSaved }: { title: Title; isSaved: boolean; onClose: () => void; onPlay: () => void; onToggleSaved: () => void }) {
-  const progressLabel = title.progress > 0 ? `${title.progress}% watched` : 'Not started';
+  const progress = title.progress ?? 0;
+  const progressLabel = progress > 0 ? `${progress}% watched` : 'Not started';
   return (
     <div className="detail-backdrop" role="dialog" aria-modal="true" aria-label={`${title.name} details`} data-testid="detail-overlay">
       <button type="button" aria-label="Close details" onClick={onClose} data-testid="button-close-details" className="detail-dismiss-layer" />
@@ -391,7 +392,7 @@ function DetailPanel({ title, isSaved, onClose, onPlay, onToggleSaved }: { title
           <div className="detail-main">
             <p className="mono detail-index-line"><span>CY / {title.type === 'series' ? 'SERIES' : 'FILM'}</span><span>{title.hasLocalPlayback ? progressLabel : 'Ready to transmit'}</span></p>
             <p className="detail-description">{title.description}</p>
-            {title.progress > 0 && <div className="detail-progress" aria-label={progressLabel}><span style={{ width: `${title.progress}%` }} /></div>}
+            {progress > 0 && <div className="detail-progress" aria-label={progressLabel}><span style={{ width: `${title.progress}%` }} /></div>}
             <div className="detail-actions">
               <button type="button" onClick={onPlay} data-testid="button-detail-play" className="focus-ring detail-play"><Play size={14} fill="currentColor" /> {title.progress > 0 ? 'Resume' : 'Play now'}</button>
               <button type="button" onClick={onToggleSaved} data-testid="button-detail-save" className="focus-ring detail-save">{isSaved ? <Check size={14} /> : <Plus size={14} />} {isSaved ? 'In My List' : 'My List'}</button>
