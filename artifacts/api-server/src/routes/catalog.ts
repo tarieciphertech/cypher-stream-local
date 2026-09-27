@@ -370,6 +370,7 @@ router.get("/catalog", async (req, res) => {
         .orderBy(desc(videoSources.isDefault));
 
       for (const row of sourceRows) {
+        if (row.titleId === null) continue;
         const mapped = grouped.get(row.titleId);
         const sourceUrl = row.sourceUrl;
         if (mapped && !mapped.sourceUrl && sourceUrl !== null) mapped.sourceUrl = sourceUrl;
