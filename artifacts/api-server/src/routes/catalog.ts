@@ -325,8 +325,7 @@ router.get("/catalog", async (req, res) => {
       .leftJoin(genres, eq(genres.id, titleGenres.genreId))
       .where(whereClause)
       .orderBy(desc(titles.featured), desc(titles.updatedAt), asc(titles.name))
-      .limit(limit)
-      .offset(offset);
+      .limit(10_000);
 
     const totalRows = await db
       .select({ count: countDistinct(titles.id) })
@@ -361,6 +360,22 @@ router.get("/catalog", async (req, res) => {
       }
       grouped.set(row.title.id, mapped);
     }
+
+    if (grouped.size) {
+      const sourceRows = await db
+        .select({ titleId: mediaAssets.titleId, sourceUrl: videoSources.sourceUrl })
+        .from(mediaAssets)
+        .innerJoin(videoSources, eq(videoSources.mediaAssetId, mediaAssets.id))
+        .where(or(...[...grouped.keys()].map((id) => eq(mediaAssets.titleId, id))))
+        .orderBy(desc(videoSources.isDefault));
+
+      for (const row of sourceRows) {
+        const mapped = grouped.get(row.titleId);
+        if (mapped && !mapped.sourceUrl) mapped.sourceUrl = row.sourceUrl;
+      }
+    }
+
+    const pagedItems = [...grouped.values()].slice(offset, offset + limit);
 
     const response = CatalogResponse.parse({
       items: [...grouped.values()],
