@@ -707,6 +707,13 @@ function TitleDetailPage() {
   const slug = params?.slug || '';
 
   useEffect(() => {
+    document.documentElement.scrollTo({ top: 0, behavior: 'auto' });
+    return () => {
+      document.title = 'Cypher Stream';
+    };
+  }, [slug]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
@@ -759,12 +766,53 @@ function TitleDetailPage() {
   if (error || !title) return <div className="cypher-app grain flex min-h-[100dvh] flex-col items-center justify-center px-5 text-center"><p className="mono mb-3 text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Signal not found</p><h1 className="display text-4xl font-bold text-[#eeebda]">That title is not in the local index.</h1><button type="button" onClick={() => setLocation('/')} className="focus-ring mt-7 rounded-full bg-[#eeebda] px-5 py-2.5 text-[11px] font-bold text-[#14151d]">Return home</button></div>;
 
   const progress = title.progress ?? 0;
+  const canonical = `/title/${title.slug || title.id}`;
+  useEffect(() => {
+    document.title = `${title.name} — Cypher Stream`;
+    const description = title.description;
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
+    meta.content = description;
+
+    const upsert = (property: string, content: string) => {
+      let node = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+      if (!node) { node = document.createElement('meta'); node.setAttribute('property', property); document.head.appendChild(node); }
+      node.content = content;
+    };
+    upsert('og:title', title.name);
+    upsert('og:description', description);
+    upsert('og:type', title.type === 'series' ? 'video.tv_show' : 'video.movie');
+    if (title.poster) upsert('og:image', title.poster);
+
+    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!link) { link = document.createElement('link'); link.rel = 'canonical'; document.head.appendChild(link); }
+    link.href = window.location.origin + canonical;
+
+    const jsonLd = document.createElement('script');
+    jsonLd.type = 'application/ld+json';
+    jsonLd.dataset.cypherTitle = 'true';
+    jsonLd.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': title.type === 'series' ? 'TVSeries' : 'Movie',
+      name: title.name,
+      description,
+      image: title.poster ? [title.poster] : undefined,
+      dateCreated: String(title.year),
+      genre: title.genres,
+      url: window.location.origin + canonical,
+    });
+    document.head.querySelectorAll('script[data-cypher-title="true"]').forEach((node) => node.remove());
+    document.head.appendChild(jsonLd);
+    return () => {
+      document.head.querySelectorAll('script[data-cypher-title="true"]').forEach((node) => node.remove());
+    };
+  }, [title, canonical]);
   const play = () => setLocation(`/watch/${title.id}`);
 
   return (
     <div className="cypher-app grain min-h-[100dvh]">
       <header className="title-page-header">
-        <button type="button" onClick={() => setLocation(-1 as never)} className="focus-ring title-page-back"><ChevronLeft size={16} /> Back</button>
+        <button type="button" onClick={() => window.history.length > 1 ? window.history.back() : setLocation('/')} className="focus-ring title-page-back"><ChevronLeft size={16} /> Back</button>
         <BrandMark />
         <Link href="/" className="mono title-page-home">Browse index <ArrowUpRight size={12} /></Link>
       </header>
