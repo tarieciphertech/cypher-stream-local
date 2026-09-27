@@ -532,3 +532,59 @@
   .watch-player-frame { margin-left: -10px; margin-right: -10px; }
   .watch-action-row > button { flex: 1 1 auto; }
 }
+
+/* Cypher Stream responsive pass: preserve the visual language while making touch layouts tighter and more deliberate. */
+@media (max-width: 1023px) {
+  .cypher-app { overflow-x: hidden; }
+  .cypher-app > div.w-full { min-width: 0; }
+  .cypher-app header { padding-left: 16px; padding-right: 16px; }
+  .cypher-app main { width: 100%; max-width: 100%; overflow-x: clip; }
+  .cypher-app .title-card { flex: 0 0 156px; min-width: 156px !important; max-width: 156px !important; }
+  .cypher-app .title-card .card-actions { opacity: 1; transform: none; }
+}
+@media (max-width: 767px) {
+  .cypher-app header { height: 60px; }
+  .cypher-app header > div:first-child .display { font-size: 13px; }
+  .cypher-app header > div:first-child .mono { font-size: 7px; }
+  .cypher-app header > div:first-child > div:first-child { width: 32px; height: 32px; }
+  .cypher-app header > div:first-child > div:first-child span { width: 17px; height: 17px; }
+  .cypher-app header .gap-3 { gap: 8px; }
+  .cypher-app header label[data-testid="label-search"] { width: 36px; height: 34px; }
+  .cypher-app header label[data-testid="label-search"]:focus-within { width: min(58vw, 250px); border-color: rgba(232,188,113,.5); background: rgba(255,255,255,.05); }
+  .cypher-app header label[data-testid="label-search"] input { font-size: 10px; }
+  .cypher-app main { padding-left: 14px; padding-right: 14px; padding-bottom: 104px; }
+  .cypher-app section[data-testid="section-featured-title"] { margin-left: -14px; margin-right: -14px; }
+  .cypher-app section[data-testid="section-featured-title"] > div:last-child { min-height: 500px; padding: 0 18px 38px; }
+  .cypher-app section[data-testid="section-featured-title"] h1 { font-size: clamp(2.9rem, 15vw, 5rem); line-height: .84; max-width: 100%; overflow-wrap: anywhere; }
+  .cypher-app section[data-testid="section-featured-title"] .max-w-md { max-width: 100%; }
+  .cypher-app section[data-testid="section-featured-title"] .mt-6 { margin-top: 14px; }
+  .cypher-app section[data-testid="section-featured-title"] .mt-5 { margin-top: 12px; }
+  .cypher-app section[data-testid="section-featured-title"] .mt-7 { margin-top: 18px; }
+  .cypher-app section[data-testid="section-featured-title"] .px-5 { padding-left: 18px; padding-right: 18px; }
+  .cypher-app section[data-testid="section-featured-title"] .pb-14 { padding-bottom: 38px; }
+  .cypher-app .reveal.mt-11 { margin-top: 32px; }
+  .cypher-app .reveal.mt-14 { margin-top: 42px; }
+  .cypher-app .scrollbar-none { gap: 10px; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .cypher-app .scrollbar-none > .title-card { scroll-snap-align: start; }
+  .cypher-app .title-card { flex-basis: 142px; min-width: 142px !important; max-width: 142px !important; }
+  .cypher-app .title-card .card-actions { bottom: 8px; left: 8px; right: 8px; gap: 5px; }
+  .cypher-app .title-card .card-actions button { width: 30px; height: 30px; }
+  .cypher-app .title-card > button:last-child { margin-top: 9px; }
+  .cypher-app [data-testid="section-genre-exploration"] .grid { gap: 8px; }
+  .cypher-app [data-testid="section-genre-exploration"] button { aspect-ratio: 1.25; }
+  .cypher-app [data-testid="section-genre-exploration"] button > div:last-child { bottom: 9px; left: 10px; right: 10px; }
+  .cypher-app nav[data-testid="nav-mobile-bottom"] { left: 8px; right: 8px; bottom: 8px; padding: 5px 2px; padding-bottom: max(5px, env(safe-area-inset-bottom)); border-radius: 18px; }
+  .cypher-app nav[data-testid="nav-mobile-bottom"] button { min-width: 0; flex: 1; padding: 7px 5px; }
+  .cypher-app nav[data-testid="nav-mobile-bottom"] button svg { width: 18px; height: 18px; }
+  .cypher-app nav[data-testid="nav-mobile-bottom"] button span { font-size: 9px; }
+  .cypher-app footer { padding-bottom: 112px; }
+  .cypher-app .fixed.inset-x-0.top-\[72px\] { top: 60px; }
+}
+@media (max-width: 380px) {
+  .cypher-app header label[data-testid="label-search"]:focus-within { width: min(55vw, 210px); }
+  .cypher-app .title-card { flex-basis: 132px; min-width: 132px !important; max-width: 132px !important; }
+  .cypher-app section[data-testid="section-featured-title"] > div:last-child { min-height: 470px; }
+}
+@media (min-width: 1024px) and (max-width: 1180px) {
+  .cypher-app .title-card { flex-basis: 150px; min-width: 150px !important; max-width: 150px !important; }
+}
