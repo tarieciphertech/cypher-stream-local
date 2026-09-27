@@ -639,3 +639,39 @@
 .detail-hero-copy{bottom:29px}.detail-title{font-size:clamp(2.8rem,16vw,5rem)}.detail-logo{max-height:75px}.detail-meta{gap:8px;margin-top:17px;font-size:10px}.detail-meta span+span::before{margin-right:8px}
 .detail-body{grid-template-columns:1fr;gap:27px;padding-top:23px}.detail-aside{display:grid;grid-template-columns:92px 1fr;gap:18px;border-top:1px solid rgba(238,235,218,.1);border-left:0;padding:22px 0 0}.detail-poster{width:92px}.detail-facts{margin-top:0}.detail-trailer{grid-column:1/-1;margin-top:0}
 }
+/* Deep-link title pages */
+.title-page-header{position:sticky;top:0;z-index:20;height:72px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 clamp(18px,4vw,54px);border-bottom:1px solid rgba(255,255,255,.07);background:rgba(11,12,20,.78);backdrop-filter:blur(18px)}
+.title-page-back,.title-page-home{display:inline-flex;align-items:center;gap:7px;color:#92919d;font-size:9px;letter-spacing:.13em;text-transform:uppercase}
+.title-page-back{justify-self:start}.title-page-home{justify-self:end}.title-page-back:hover,.title-page-home:hover{color:#e8bc71}
+.title-page{max-width:1440px;margin:auto;padding-bottom:80px}
+.title-page-hero{position:relative;min-height:610px;overflow:hidden}
+.title-page-art{position:absolute;inset:0;background-position:center;background-size:cover}
+.title-page-overlay{position:absolute;inset:0;background:linear-gradient(90deg,#0b0c14 0%,rgba(11,12,20,.82) 34%,rgba(11,12,20,.25) 75%,rgba(11,12,20,.1)),linear-gradient(0deg,#0b0c14 0%,transparent 45%)}
+.title-page-copy{position:relative;display:flex;min-height:610px;max-width:720px;flex-direction:column;justify-content:flex-end;padding:60px clamp(24px,6vw,70px)}
+.title-page-name{font-size:clamp(3.5rem,8vw,8rem);line-height:.84;letter-spacing:-.08em;color:#eeebda}
+.title-page-description{max-width:600px;margin-top:20px;color:#b9b7bf;font-size:14px;line-height:1.85}
+.title-page-content{display:grid;grid-template-columns:180px minmax(0,700px);gap:42px;padding:48px clamp(24px,6vw,70px);border-top:1px solid rgba(255,255,255,.08)}
+.title-page-poster{position:relative;aspect-ratio:2/3;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#191b25}
+.title-page-poster>div{position:absolute;inset:0}
+.title-page-info{padding-top:5px}.title-page-label{color:#c4e56b;font-size:8px;letter-spacing:.22em;text-transform:uppercase}
+.title-page-info h2,.title-page-section-heading h2{margin-top:8px;color:#eeebda;font-size:clamp(1.7rem,3vw,2.5rem);letter-spacing:-.05em}
+.title-page-info>p:not(.title-page-label){margin-top:16px;color:#9e9ca6;font-size:13px;line-height:1.8}
+.title-page-facts{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:22px;color:#777681;font:8px var(--app-font-mono);letter-spacing:.1em;text-transform:uppercase}
+.title-page-seasons{padding:20px clamp(24px,6vw,70px) 0}
+.title-page-section-heading{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:18px}
+.title-page-section-heading>span{color:#666572;font-size:9px}
+.title-page-season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:20px}
+.title-page-season{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.018)}
+.title-page-season-heading{display:flex;align-items:center;justify-content:space-between;padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.07);color:#eeebda;font-size:11px}
+.title-page-season-heading small{color:#6e6d78;font:8px var(--app-font-mono);letter-spacing:.12em;text-transform:uppercase}
+.title-page-episodes{display:grid}
+.title-page-episode{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:8px;padding:13px 17px;border-bottom:1px solid rgba(255,255,255,.05);text-align:left;color:#85838e}
+.title-page-episode:last-child{border-bottom:0}.title-page-episode>span{color:#c4e56b;font:8px var(--app-font-mono)}.title-page-episode strong{overflow:hidden;color:#aaa8b2;font-size:10px;font-weight:500;text-overflow:ellipsis;white-space:nowrap}.title-page-episode:hover:not(:disabled){background:rgba(232,188,113,.05);color:#e8bc71}.title-page-episode:hover:not(:disabled) strong{color:#eeebda}.title-page-episode:disabled{cursor:not-allowed;opacity:.35}
+@media(max-width:760px){
+.title-page-header{height:60px}.title-page-header>.flex{transform:scale(.86)}
+.title-page-home{display:none}.title-page-hero{min-height:570px}.title-page-copy{min-height:570px;padding:35px 22px}
+.title-page-overlay{background:linear-gradient(0deg,#0b0c14 0%,rgba(11,12,20,.48) 55%,rgba(11,12,20,.16) 100%)}
+.title-page-name{font-size:clamp(3.2rem,17vw,6rem)}.title-page-description{font-size:12px;line-height:1.7}
+.title-page-content{grid-template-columns:86px 1fr;gap:18px;padding:30px 22px}.title-page-poster{width:86px}.title-page-info h2{font-size:24px}.title-page-info>p:not(.title-page-label){font-size:11px}
+.title-page-facts{grid-column:1/-1;margin-top:0}.title-page-seasons{padding:15px 22px 0}.title-page-season-grid{grid-template-columns:1fr}
+}
