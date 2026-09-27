@@ -588,3 +588,13 @@
 @media (min-width: 1024px) and (max-width: 1180px) {
   .cypher-app .title-card { flex-basis: 150px; min-width: 150px !important; max-width: 150px !important; }
 }
+
+/* Watch experience polish: compact season navigation and an explicit next-episode handoff. */
+.watch-next-card { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-top:18px; border:1px solid rgba(196,229,107,.22); background:linear-gradient(135deg, rgba(196,229,107,.08), rgba(232,188,113,.035)); padding:18px 20px; }
+.watch-next-card h2 { margin-top:6px; font-family:var(--app-font-display); font-size:22px; letter-spacing:-.04em; color:var(--watch-paper); }
+.watch-next-card > div > p:last-child { margin-top:5px; color:#8d8b96; font-size:11px; }
+.watch-season-tabs { display:flex; gap:6px; overflow-x:auto; margin-top:17px; padding-bottom:3px; scrollbar-width:none; }
+.watch-season-tabs::-webkit-scrollbar { display:none; }
+.watch-season-tab { flex:0 0 auto; border:1px solid rgba(240,237,223,.13); background:rgba(240,237,223,.025); padding:7px 10px; color:#777681; font:8px var(--app-font-mono); letter-spacing:.08em; transition:border-color .2s ease, background-color .2s ease, color .2s ease; }
+.watch-season-tab:hover, .watch-season-tab-active { border-color:var(--watch-amber); background:rgba(232,188,113,.08); color:var(--watch-paper); }
+@media (max-width:760px) { .watch-next-card { align-items:flex-start; flex-direction:column; gap:14px; } .watch-next-card .watch-action-primary { width:100%; justify-content:center; } }
