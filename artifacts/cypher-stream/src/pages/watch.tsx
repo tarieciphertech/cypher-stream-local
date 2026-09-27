@@ -67,6 +67,8 @@ export default function WatchPage() {
   const [progress, setProgress] = useState(0);
   const [playbackError, setPlaybackError] = useState(false);
   const [playbackPreparing, setPlaybackPreparing] = useState(false);
+  const [activeSeasonNumber, setActiveSeasonNumber] = useState<number | null>(null);
+  const [showNextEpisode, setShowNextEpisode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const episodes = useMemo(
@@ -107,6 +109,8 @@ export default function WatchPage() {
         const catalog = catalogResponse.ok ? await catalogResponse.json() as CatalogResponse : null;
         if (!cancelled) {
           setTitle(detail);
+          setActiveSeasonNumber(detail.seasons[0]?.seasonNumber ?? null);
+          setShowNextEpisode(false);
           setRelatedTitles(
             (catalog?.items || [])
               .filter((item) => item.id !== detail.id)
@@ -202,6 +206,8 @@ export default function WatchPage() {
     const next = episodes[index + 1];
     if (!next) return;
 
+    setShowNextEpisode(true);
+
     // Keep the cinema moving: advance to the next episode after the current
     // presentation finishes. The next video stays paused until the viewer
     // explicitly starts it, avoiding surprising autoplay on LAN clients.
@@ -212,6 +218,19 @@ export default function WatchPage() {
     setPlaybackError(false);
     setPlaybackPreparing(false);
   };
+
+  const playNextEpisode = () => {
+    if (!selectedEpisode || title.mediaType !== 'series') return;
+    const index = episodes.findIndex((episode) => episode.id === selectedEpisode.id);
+    const next = episodes[index + 1];
+    if (!next) return;
+    setShowNextEpisode(false);
+    setPlaybackError(false);
+    setPlaybackPreparing(true);
+    setSelectedEpisodeId(next.id);
+  };
+
+  const activeSeason = title.seasons.find((season) => season.seasonNumber === activeSeasonNumber) || title.seasons[0];
 
   return (
     <div className="watch-shell grain" data-testid={`page-watch-${title.id}`}>
@@ -273,6 +292,13 @@ export default function WatchPage() {
             </p>
           )}
 
+          {showNextEpisode && title.mediaType === 'series' && selectedEpisode && episodes[episodes.findIndex((episode) => episode.id === selectedEpisode.id) + 1] && (
+            <section className="watch-next-card reveal" data-testid="section-next-episode">
+              <div><p className="watch-kicker">Transmission complete</p><h2>Ready for the next episode?</h2><p>{episodes[episodes.findIndex((episode) => episode.id === selectedEpisode.id) + 1].name}</p></div>
+              <button type="button" onClick={playNextEpisode} className="watch-action-primary focus-ring" data-testid="button-play-next"><Play size={14} fill="currentColor" /> Play next</button>
+            </section>
+          )}
+
           <section className="watch-detail-grid reveal reveal-delay-2">
             <div>
               <div className="watch-meta-line" data-testid="text-watch-metadata">
@@ -302,29 +328,12 @@ export default function WatchPage() {
               {title.mediaType === 'series' ? (
                 <div className="mt-6">
                   <div className="flex items-center gap-2"><ListVideo size={14} className="text-[#c4e56b]" /><h2>Choose an episode</h2></div>
-                  <div className="watch-episode-list" role="listbox" aria-label="Episodes">
-                    {title.seasons.map((season) => (
-                      <div key={season.id} className="contents">
-                        <div className="watch-kicker mt-4">Season {season.seasonNumber}</div>
-                        {season.episodes.map((episode) => (
-                          <button
-                            key={episode.id}
-                            type="button"
-                            role="option"
-                            aria-selected={selectedEpisode?.id === episode.id}
-                            onClick={() => {
-                              setPlaybackPreparing(true);
-                              setPlaybackError(false);
-                              setSelectedEpisodeId(episode.id);
-                            }}
-                            className={`watch-episode focus-ring ${selectedEpisode?.id === episode.id ? 'watch-episode-active' : ''}`}
-                          >
-                            <span>{episode.name}</span><small>{selectedEpisode?.id === episode.id ? 'NOW' : `E${String(episode.episodeNumber).padStart(2, '0')}`}</small>
-                          </button>
-                        ))}
-                      </div>
-                    ))}
+                  <div className="watch-season-tabs" role="tablist" aria-label="Seasons">
+                    {title.seasons.map((season) => <button key={season.id} type="button" role="tab" aria-selected={activeSeason?.id === season.id} onClick={() => setActiveSeasonNumber(season.seasonNumber)} className={`watch-season-tab focus-ring ${activeSeason?.id === season.id ? 'watch-season-tab-active' : ''}`}>S{String(season.seasonNumber).padStart(2, '0')}</button>)}
                   </div>
+                  {activeSeason && <div className="watch-episode-list" role="listbox" aria-label={`Season ${activeSeason.seasonNumber} episodes`}>
+                    {activeSeason.episodes.map((episode) => <button key={episode.id} type="button" role="option" aria-selected={selectedEpisode?.id === episode.id} onClick={() => { setPlaybackPreparing(true); setPlaybackError(false); setShowNextEpisode(false); setSelectedEpisodeId(episode.id); }} className={`watch-episode focus-ring ${selectedEpisode?.id === episode.id ? 'watch-episode-active' : ''}`}><span>{episode.name}</span><small>{selectedEpisode?.id === episode.id ? 'NOW' : `E${String(episode.episodeNumber).padStart(2, '0')}`}</small></button>)}
+                  </div>}
                 </div>
               ) : (
                 <div className="mt-6 flex items-center gap-2 text-[10px] text-[#aaa8b2]" data-testid="text-feature-state"><Film size={14} className="text-[#c4e56b]" /> Selected feature presentation</div>
