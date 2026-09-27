@@ -607,6 +607,22 @@ function BrowseSurface() {
             <>
               {!showHomeHero && <div className="reveal flex items-end justify-between pt-11"><div><p className="mono mb-2 text-[9px] uppercase tracking-[.25em] text-[#e8bc71]">The index</p><h1 className="display text-4xl font-bold tracking-[-.06em] text-[#eeebda]">{activeSection === 'series' ? 'Series, in full signal.' : 'Films worth staying up for.'}</h1></div><span className="mono hidden text-[10px] text-[#72717d] sm:block">{filteredTitles.length} transmissions</span></div>}
               {showHomeHero && <TitleRow label="Pick up where you left off" kicker="Continue watching" items={continueTitles} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />}
+              {activeSection === 'series' && (
+                <section className="reveal mt-10" data-testid="section-series-catalog">
+                  <div className="mb-5 flex items-end justify-between">
+                    <div>
+                      <p className="mono mb-2 text-[9px] uppercase tracking-[.24em] text-[#c4e56b]">Series catalogue</p>
+                      <h2 className="display text-[21px] font-bold tracking-[-.03em] text-[#eeebda] sm:text-[24px]">Available transmissions</h2>
+                    </div>
+                    <span className="mono text-[10px] text-[#72717d]">{filteredTitles.length} titles</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6">
+                    {filteredTitles.map((title) => (
+                      <PosterCard key={title.id} title={title} isSaved={saved.has(title.id)} onOpen={() => setSelectedTitle(title)} onPlay={() => openWatch(title)} onToggleSaved={() => toggleSaved(title.id)} />
+                    ))}
+                  </div>
+                </section>
+              )}
               <TitleRow label={activeSection === 'home' ? 'Tonight’s signal' : activeSection === 'series' ? 'Series with a point of view' : 'The long way around'} kicker={activeSection === 'home' ? 'Curated this week' : undefined} items={filteredTitles.filter((title) => !continueTitles.includes(title)).slice(0, 6)} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
               {showHomeHero && <GenreGrid onGenre={(genre) => setQuery(genre)} />}
               <TitleRow label="Further transmissions" kicker="A little off-center" items={newTitles.filter((title) => filteredTitles.includes(title))} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />
