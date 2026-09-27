@@ -371,7 +371,7 @@ router.get("/catalog", async (req, res) => {
 
       for (const row of sourceRows) {
         const mapped = grouped.get(row.titleId);
-        if (mapped && !mapped.sourceUrl && row.sourceUrl) mapped.sourceUrl = row.sourceUrl;
+        if (mapped && !mapped.sourceUrl && typeof row.sourceUrl === "string") mapped.sourceUrl = row.sourceUrl;
       }
     }
 
