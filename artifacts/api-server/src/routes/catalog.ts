@@ -378,7 +378,7 @@ router.get("/catalog", async (req, res) => {
     const pagedItems = [...grouped.values()].slice(offset, offset + limit);
 
     const response = CatalogResponse.parse({
-      items: [...grouped.values()],
+      items: pagedItems,
       total: Number(totalRows[0]?.count ?? 0),
       limit,
       offset,
