@@ -28,7 +28,7 @@ import { genreMoods, type Title } from './data';
 import AdminStudio from '@/pages/admin-studio';
 import WatchPage from '@/pages/watch';
 import NotFound from '@/pages/not-found';
-import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Link, Route, Switch, useLocation, useRoute, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
 type NavKey = 'home' | 'series' | 'films' | 'my-list';
@@ -113,6 +113,7 @@ const catalogToTitle = (item: CatalogTitle): Title => ({
   poster: item.posterUrl || '',
   backdrop: item.backdropUrl || '',
   accent: item.accent || '#e8bc71',
+  slug: item.slug,
   playbackSource: item.sourceUrl || undefined,
   progress: readLocalProgress(item.id),
   hasLocalPlayback: hasLocalPlayback(item.id),
@@ -490,6 +491,7 @@ function BrowseSurface() {
 
   const toggleSaved = (id: string) => setSavedIds((current) => current.includes(id) ? current.filter((savedId) => savedId !== id) : [...current, id]);
   const openWatch = (title: Title) => setLocation(`/watch/${title.id}`);
+  const openTitle = (title: Title) => setLocation(`/title/${title.slug || title.id}`);
   const selectNav = (key: NavKey) => {
     setActiveSection(key);
     setQuery('');
@@ -589,7 +591,7 @@ function BrowseSurface() {
                   <p className="reveal reveal-delay-3 mt-5 max-w-md text-[13px] leading-6 text-[#b9b7be] sm:text-sm">{featuredTitle.description}</p>
                   <div className="reveal reveal-delay-3 mt-7 flex flex-wrap gap-3">
                     <button type="button" onClick={() => openWatch(featuredTitle)} data-testid="button-featured-play" className="focus-ring flex items-center gap-2 rounded-full bg-[#eeebda] px-6 py-3 text-[11px] font-bold text-[#14151d] transition-transform hover:scale-[1.03]"><Play size={14} fill="currentColor" /> Play now</button>
-                    <button type="button" onClick={() => setSelectedTitle(featuredTitle)} data-testid="button-featured-details" className="focus-ring flex items-center gap-2 rounded-full border border-white/20 bg-[#0b0c14]/35 px-6 py-3 text-[11px] font-semibold text-[#eeebda] backdrop-blur-sm hover:border-[#e8bc71] hover:text-[#e8bc71]"><Info size={14} /> Details</button>
+                    <button type="button" onClick={() => openTitle(featuredTitle)} data-testid="button-featured-details" className="focus-ring flex items-center gap-2 rounded-full border border-white/20 bg-[#0b0c14]/35 px-6 py-3 text-[11px] font-semibold text-[#eeebda] backdrop-blur-sm hover:border-[#e8bc71] hover:text-[#e8bc71]"><Info size={14} /> Details</button>
                   </div>
                 </div>
                 <div className="absolute bottom-10 right-7 hidden items-center gap-4 lg:flex">
@@ -603,7 +605,7 @@ function BrowseSurface() {
           {searchActive ? (
             <section className="pt-10" data-testid="section-search-results">
               <div className="mb-8 flex items-end justify-between"><div><p className="mono mb-2 text-[9px] uppercase tracking-[.25em] text-[#e8bc71]">Search results</p><h1 className="display text-3xl font-bold tracking-[-.05em] text-[#eeebda]">For “{query}”</h1></div><span className="mono text-[10px] text-[#72717d]">{filteredTitles.length} matches</span></div>
-              {filteredTitles.length ? <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6">{filteredTitles.map((title) => <PosterCard key={title.id} title={title} isSaved={saved.has(title.id)} onOpen={() => setSelectedTitle(title)} onPlay={() => openWatch(title)} onToggleSaved={() => toggleSaved(title.id)} />)}</div> : <SearchEmpty query={query} onReset={() => setQuery('')} onBrowse={() => selectNav('home')} />}
+              {filteredTitles.length ? <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-6">{filteredTitles.map((title) => <PosterCard key={title.id} title={title} isSaved={saved.has(title.id)} onOpen={() => openTitle(title)} onPlay={() => openWatch(title)} onToggleSaved={() => toggleSaved(title.id)} />)}</div> : <SearchEmpty query={query} onReset={() => setQuery('')} onBrowse={() => selectNav('home')} />}
             </section>
           ) : activeSection === 'my-list' ? (
             <section className="pt-10" data-testid="section-my-list">
@@ -614,7 +616,7 @@ function BrowseSurface() {
           ) : (
             <>
               {!showHomeHero && <div className="reveal flex items-end justify-between pt-11"><div><p className="mono mb-2 text-[9px] uppercase tracking-[.25em] text-[#e8bc71]">The index</p><h1 className="display text-4xl font-bold tracking-[-.06em] text-[#eeebda]">{activeSection === 'series' ? 'Series, in full signal.' : 'Films worth staying up for.'}</h1></div><span className="mono hidden text-[10px] text-[#72717d] sm:block">{filteredTitles.length} transmissions</span></div>}
-              {showHomeHero && <TitleRow label="Pick up where you left off" kicker="Continue watching" items={continueTitles} saved={saved} onOpen={setSelectedTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />}
+              {showHomeHero && <TitleRow label="Pick up where you left off" kicker="Continue watching" items={continueTitles} saved={saved} onOpen={openTitle} onPlay={openWatch} onToggleSaved={toggleSaved} />}
               {(activeSection === 'series' || activeSection === 'films') && (
                 <section className="reveal mt-10" data-testid={activeSection === 'series' ? 'section-series-catalog' : 'section-films-catalog'}>
                   <div className="mb-5 flex items-end justify-between">
@@ -690,11 +692,137 @@ function BrowseSurface() {
   );
 }
 
+
+type DetailEpisode = { id: string; name: string; episodeNumber: number; sourceUrl: string | null };
+type DetailSeason = { id: string; seasonNumber: number; episodes: DetailEpisode[] };
+
+function TitleDetailPage() {
+  const [, params] = useRoute('/title/:slug');
+  const [, setLocation] = useLocation();
+  const [title, setTitle] = useState<Title | null>(null);
+  const [seasons, setSeasons] = useState<DetailSeason[]>([]);
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const slug = params?.slug || '';
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    fetch('/api/catalog?limit=100&offset=0')
+      .then((response) => {
+        if (!response.ok) throw new Error('catalog');
+        return response.json() as Promise<{ items: CatalogTitle[] }>;
+      })
+      .then(async (payload) => {
+        const item = payload.items.find((candidate) => candidate.status === 'published' && (candidate.slug === slug || candidate.id === slug));
+        if (!item) throw new Error('not-found');
+        const mapped = catalogToTitle(item);
+        let detailSeasons: DetailSeason[] = [];
+        if (mapped.type === 'series') {
+          const detailResponse = await fetch(`/api/titles/${mapped.id}`);
+          if (detailResponse.ok) {
+            const detail = await detailResponse.json() as { seasons?: DetailSeason[] };
+            detailSeasons = detail.seasons || [];
+          }
+        }
+        if (!cancelled) {
+          setTitle(mapped);
+          setSeasons(detailSeasons);
+          try {
+            const ids = JSON.parse(window.localStorage.getItem(savedListKey) || '[]') as unknown;
+            setSaved(Array.isArray(ids) && ids.includes(mapped.id));
+          } catch { setSaved(false); }
+        }
+      })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  const toggleSaved = () => {
+    if (!title) return;
+    setSaved((current) => {
+      const next = !current;
+      try {
+        const ids = JSON.parse(window.localStorage.getItem(savedListKey) || '[]') as unknown;
+        const list = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+        const updated = next ? Array.from(new Set([...list, title.id])) : list.filter((id) => id !== title.id);
+        window.localStorage.setItem(savedListKey, JSON.stringify(updated));
+      } catch {}
+      return next;
+    });
+  };
+
+  if (loading) return <div className="cypher-app grain flex min-h-[100dvh] items-center justify-center"><p className="mono text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Opening transmission…</p></div>;
+  if (error || !title) return <div className="cypher-app grain flex min-h-[100dvh] flex-col items-center justify-center px-5 text-center"><p className="mono mb-3 text-[10px] uppercase tracking-[.28em] text-[#e8bc71]">Signal not found</p><h1 className="display text-4xl font-bold text-[#eeebda]">That title is not in the local index.</h1><button type="button" onClick={() => setLocation('/')} className="focus-ring mt-7 rounded-full bg-[#eeebda] px-5 py-2.5 text-[11px] font-bold text-[#14151d]">Return home</button></div>;
+
+  const progress = title.progress ?? 0;
+  const play = () => setLocation(`/watch/${title.id}`);
+
+  return (
+    <div className="cypher-app grain min-h-[100dvh]">
+      <header className="title-page-header">
+        <button type="button" onClick={() => setLocation(-1 as never)} className="focus-ring title-page-back"><ChevronLeft size={16} /> Back</button>
+        <BrandMark />
+        <Link href="/" className="mono title-page-home">Browse index <ArrowUpRight size={12} /></Link>
+      </header>
+      <main className="title-page">
+        <section className="title-page-hero">
+          <div className="title-page-art" style={{ backgroundImage: title.backdrop ? `url(${title.backdrop}), ${posterFallback(title.name, title.accent)}` : posterFallback(title.name, title.accent) }} />
+          <div className="title-page-overlay" />
+          <div className="title-page-copy">
+            <p className="mono detail-kicker">{title.type === 'series' ? 'Series transmission' : 'Feature transmission'}</p>
+            <h1 className="display title-page-name">{title.name}</h1>
+            <div className="detail-meta"><span className="detail-signal">{title.rating}</span><span>{title.year}</span><span>{title.duration}</span>{title.genres.slice(0, 4).map((genre) => <span key={genre}>{genre}</span>)}</div>
+            <p className="title-page-description">{title.description}</p>
+            <div className="detail-actions">
+              <button type="button" onClick={play} className="focus-ring detail-play"><Play size={14} fill="currentColor" /> {progress > 0 ? 'Resume' : 'Play now'}</button>
+              <button type="button" onClick={toggleSaved} className="focus-ring detail-save">{saved ? <Check size={14} /> : <Plus size={14} />} {saved ? 'In My List' : 'My List'}</button>
+            </div>
+          </div>
+        </section>
+        <section className="title-page-content">
+          <div className="title-page-poster"><ImageCover title={title} /></div>
+          <div className="title-page-info">
+            <p className="mono title-page-label">Local catalogue / {title.type === 'series' ? 'Series' : 'Film'}</p>
+            <h2 className="display">About this transmission</h2>
+            <p>{title.description}</p>
+            {progress > 0 && <div className="detail-progress"><span style={{ width: `${progress}%` }} /></div>}
+            <div className="title-page-facts"><span>{title.genres.join(' · ')}</span><span>{title.type === 'series' ? 'Multiple seasons' : 'Feature film'}</span><span>Available locally</span></div>
+          </div>
+        </section>
+        {title.type === 'series' && seasons.length > 0 && (
+          <section className="title-page-seasons">
+            <div className="title-page-section-heading"><div><p className="mono title-page-label">Episode index</p><h2 className="display">Seasons & episodes</h2></div><span className="mono">{seasons.length} seasons</span></div>
+            <div className="title-page-season-grid">
+              {seasons.map((season) => (
+                <div key={season.id} className="title-page-season">
+                  <div className="title-page-season-heading"><span>Season {String(season.seasonNumber).padStart(2, '0')}</span><small>{season.episodes.length} episodes</small></div>
+                  <div className="title-page-episodes">
+                    {season.episodes.map((episode) => (
+                      <button key={episode.id} type="button" onClick={() => setLocation(`/watch/${title.id}?episode=${episode.id}`)} className="focus-ring title-page-episode" disabled={!episode.sourceUrl}>
+                        <span>E{String(episode.episodeNumber).padStart(2, '0')}</span><strong>{episode.name}</strong><ArrowUpRight size={12} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}
+
 function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/admin" component={AdminStudio} />
+        <Route path="/title/:slug" component={TitleDetailPage} />
         <Route path="/watch/:id" component={WatchPage} />
         <Route path="/" component={BrowseSurface} />
         <Route component={NotFound} />
