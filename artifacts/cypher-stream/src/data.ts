@@ -9,6 +9,7 @@ export interface Episode {
 
 export interface Title {
   id: string;
+  slug?: string;
   name: string;
   eyebrow: string;
   year: number;
